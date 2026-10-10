@@ -21,6 +21,7 @@ TARGET_DIR="${HOME}"
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
 BACKUP_DIR="${HOME}/.dotfiles_backup/${TIMESTAMP}"
 BACKUP_CREATED=0
+DRY_RUN=0
 
 # Parse options
 while [[ $# -gt 0 ]]; do
@@ -33,6 +34,10 @@ while [[ $# -gt 0 ]]; do
             BACKUP_DIR="$2"
             shift 2
             ;;
+        -n|--dry-run|--preview)
+            DRY_RUN=1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -42,13 +47,17 @@ done
 
 backup_file() {
     local file="$1"
+    local base
+    base="$(basename "$file")"
+    if [ "$DRY_RUN" -eq 1 ]; then
+        log_info "[DRY-RUN] Would backup: $file -> $BACKUP_DIR/$base"
+        return 0
+    fi
     if [ "$BACKUP_CREATED" -eq 0 ]; then
         mkdir -p "$BACKUP_DIR"
         BACKUP_CREATED=1
         log_info "Backup directory initialized at: $BACKUP_DIR"
     fi
-    local base
-    base="$(basename "$file")"
     mv "$file" "$BACKUP_DIR/$base"
     log_warn "Existing file backed up: $file -> $BACKUP_DIR/$base"
 }
@@ -56,6 +65,18 @@ backup_file() {
 link_file() {
     local src="$1"
     local dest="$2"
+
+    if [ "$DRY_RUN" -eq 1 ]; then
+        if [ -L "$dest" ] && [ "$(readlink -f "$dest" 2>/dev/null || readlink "$dest")" = "$src" ]; then
+            log_info "[DRY-RUN] Already linked: $dest -> $src"
+        elif [ -e "$dest" ] || [ -L "$dest" ]; then
+            backup_file "$dest"
+            log_info "[DRY-RUN] Would link: $dest -> $src"
+        else
+            log_info "[DRY-RUN] Would link: $dest -> $src"
+        fi
+        return 0
+    fi
 
     mkdir -p "$(dirname "$dest")"
 
@@ -116,7 +137,7 @@ done
 
 # Link modular aliases in ~/.bash_aliases.d/
 if [ -d "${DOTFILES_ROOT}/config/bash/aliases.d" ]; then
-    mkdir -p "${TARGET_DIR}/.bash_aliases.d"
+    [ "$DRY_RUN" -eq 0 ] && mkdir -p "${TARGET_DIR}/.bash_aliases.d"
     for mod in "${DOTFILES_ROOT}/config/bash/aliases.d"/*.sh; do
         if [ -f "$mod" ]; then
             mod_name="$(basename "$mod")"
@@ -127,19 +148,23 @@ fi
 
 # Link custom user binaries to ~/.local/bin
 LOCAL_BIN="${TARGET_DIR}/.local/bin"
-mkdir -p "$LOCAL_BIN"
+[ "$DRY_RUN" -eq 0 ] && mkdir -p "$LOCAL_BIN"
 
 if [ -d "${DOTFILES_ROOT}/bin" ]; then
     for script in "${DOTFILES_ROOT}/bin"/*; do
         if [ -f "$script" ]; then
-            chmod +x "$script"
+            [ "$DRY_RUN" -eq 0 ] && chmod +x "$script"
             script_name="$(basename "$script")"
             link_file "$script" "${LOCAL_BIN}/${script_name}"
         fi
     done
 fi
 
-log_success "Symlink process completed."
-if [ "$BACKUP_CREATED" -eq 1 ]; then
-    log_info "Any overridden files are preserved in: $BACKUP_DIR"
+if [ "$DRY_RUN" -eq 1 ]; then
+    log_success "Dry-run preview completed. Zero changes were made to disk."
+else
+    log_success "Symlink process completed."
+    if [ "$BACKUP_CREATED" -eq 1 ]; then
+        log_info "Any overridden files are preserved in: $BACKUP_DIR"
+    fi
 fi

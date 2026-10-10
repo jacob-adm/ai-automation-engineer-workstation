@@ -20,6 +20,7 @@ mkdir -p "$AUTO_AGENT_TRACE_DIR" "$AUTO_AGENT_LOG_DIR" 2>/dev/null || true
 # Emergency halt: stops all autonomous agent loops
 agent-stop() {
     touch "$AUTO_AGENT_DISABLED_SENTINEL"
+    chmod 600 "$AUTO_AGENT_DISABLED_SENTINEL" 2>/dev/null || true
     echo -e "\033[01;31m[CIRCUIT BREAKER ENGAGED]\033[00m Emergency stop active: $AUTO_AGENT_DISABLED_SENTINEL"
     echo "All local agent harnesses and automated loops will immediately abort."
 }
@@ -27,6 +28,12 @@ agent-stop() {
 # Resume agent execution
 agent-resume() {
     if [ -f "$AUTO_AGENT_DISABLED_SENTINEL" ]; then
+        local sentinel_owner
+        sentinel_owner="$(stat -c "%u" "$AUTO_AGENT_DISABLED_SENTINEL" 2>/dev/null || stat -f "%u" "$AUTO_AGENT_DISABLED_SENTINEL" 2>/dev/null || echo "")"
+        if [ -n "$sentinel_owner" ] && [ "$sentinel_owner" -ne "$EUID" ]; then
+            echo -e "\033[01;31m[ERROR]\033[00m Cannot resume: Sentinel owned by UID $sentinel_owner, not current user ($EUID)." >&2
+            return 1
+        fi
         rm -f "$AUTO_AGENT_DISABLED_SENTINEL"
         echo -e "\033[01;32m[CIRCUIT BREAKER CLEARED]\033[00m Agent execution resumed."
     else
@@ -87,6 +94,10 @@ agent-guard-check() {
     fi
 
     # Record trace
+    if [ ! -f "$log_file" ]; then
+        touch "$log_file"
+        chmod 600 "$log_file" 2>/dev/null || true
+    fi
     echo "$now $(date -u +"%Y-%m-%dT%H:%M:%SZ") $caller" >> "$log_file"
     return 0
 }

@@ -206,6 +206,32 @@ else
     fail "OpenCode configuration missing or broken"
 fi
 
+# 8. Security & Supply Chain Invariants Check
+header "Checking Security & Supply Chain Invariants"
+if [ -f "$HOME/.config/mcp/mcp.json" ]; then
+    if jq -e '.mcpServers.filesystem.args[] | select(. == ".")' "$HOME/.config/mcp/mcp.json" >/dev/null 2>&1; then
+        warn "MCP filesystem server config exposes bare '.' directory"
+    else
+        pass "MCP filesystem server configuration bounded"
+    fi
+fi
+
+if [ -f "$HOME/.secrets/ai.env" ]; then
+    secret_perms=$(stat -c "%a" "$HOME/.secrets/ai.env" 2>/dev/null || stat -f "%OLp" "$HOME/.secrets/ai.env" 2>/dev/null || echo "")
+    if [[ "$secret_perms" =~ ^0?[46]00$ ]]; then
+        pass "Secret file ~/.secrets/ai.env has secure permissions ($secret_perms)"
+    else
+        if [ "$FIX_MODE" -eq 1 ]; then
+            chmod 600 "$HOME/.secrets/ai.env" 2>/dev/null || true
+            pass "Hardened ~/.secrets/ai.env permissions to 0600"
+        else
+            warn "Secret file ~/.secrets/ai.env has loose permissions ($secret_perms). Run: chmod 600 ~/.secrets/ai.env"
+        fi
+    fi
+else
+    pass "No default secret file in ~/.secrets/ai.env (clean environment)"
+fi
+
 # Summary
 echo -e "\n${BOLD}${CYAN}=====================================================${RESET}"
 echo -e "Doctor Summary: ${BOLD}${GREEN}$PASSED_CHECKS Passed${RESET}, ${BOLD}${YELLOW}$WARNING_CHECKS Warnings${RESET}, ${BOLD}${RED}$FAILED_CHECKS Failed${RESET} (out of $TOTAL_CHECKS checks)"

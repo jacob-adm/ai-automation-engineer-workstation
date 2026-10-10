@@ -6,7 +6,7 @@ Testing was executed in an isolated, non-root Ubuntu 24.04 LTS container environ
 
 ```
 ========================================================================
-  ALL 16 EMPIRICAL TEST RECEIPT STAGES PASSED WITH 100% SUCCESS!       
+  ALL 17 EMPIRICAL TEST RECEIPT STAGES PASSED WITH 100% SUCCESS!       
 ========================================================================
 ```
 
@@ -35,12 +35,13 @@ To independently reproduce and witness every single receipt on your machine:
 | **8** | Circuit Breakers & Guardrails | Test `agent-status`, `agent-stop`, `agent-guard-check` rejection, `agent-resume`, and trace logging | **PASSED** | 5/5 verified |
 | **9** | Task Queue (`pueue`) | Test daemon spawning, group creation (`experiments=2`, `agents=4`), `jexp`, `jagent`, `jls` | **PASSED** | 3/3 verified |
 | **10** | Modular Shell Aliases | Verify loading of 5 alias modules (`git`, `ai`, `containers`, `nav`, `sys`) and `extract` archive utility | **PASSED** | 2/2 verified |
-| **11** | Self-Healing Medic (`doctor`) | Test 45-point health check, simulate symlink drift, fail gracefully, and heal with `doctor --fix` | **PASSED** | 4/4 verified |
+| **11** | Self-Healing Medic (`doctor`) | Test 47-point health check, simulate symlink drift, fail gracefully, and heal with `doctor --fix` | **PASSED** | 4/4 verified |
 | **12** | Model Context Protocol (MCP) | Validate `mcp.json` schema, server definitions, and test `check-mcp-logs` read and clear | **PASSED** | 4/4 verified |
 | **13** | Developer CLI Tools | Test `sysinfo`, `pr-checkout --help`, and `ensure-docker` graceful fallback | **PASSED** | 3/3 verified |
 | **14** | AI Agent Configurations | Validate `CLAUDE.md`, `settings.json`, `opencode.json`, and `fileExclusions` (`.worktrees/**`, `*.env`) | **PASSED** | 4/4 verified |
 | **15** | ELI10 60-Second Web Dashboard | Create HTML dashboard, serve on port 8765, curl via HTTP, assert body, and clean up | **PASSED** | 1/1 verified |
 | **16** | Living System Update | Execute `dotfiles-update` (`update.sh`) full cycle, refresh links, and run `doctor --fix` | **PASSED** | 1/1 verified |
+| **17** | Security Invariants & Defenses | Verify zero `curl \| sh`, pinned SHA256 checksums, `secret-run` fail-closed & ACE block, bounded MCP scope, install `--dry-run`, circuit-breaker task blocking, and telemetry `0600` permissions | **PASSED** | 9/9 verified |
 
 ---
 
@@ -310,11 +311,35 @@ Simulated the exact user journey from [QUICK-START.md](QUICK-START.md):
 [INFO] Refreshing dotfile symlinks...
 [INFO] Checking for uv tool updates...
 [INFO] Executing self-healing diagnostic check...
-Doctor Summary: 44 Passed, 1 Warnings, 0 Failed (out of 45 checks)
+Doctor Summary: 46 Passed, 1 Warnings, 0 Failed (out of 47 checks)
 =====================================================
   DOTFILES ENVIRONMENT SUCCESSFULLY UPDATED!         
 =====================================================
 [RECEIPT PASS] dotfiles-update executed full update cycle and verified system health
+```
+
+---
+
+### Stage 17: Security Invariants, Supply Chain Verification & Defenses
+- **Supply Chain Integrity**: Verified zero `curl | sh` pipes in [`scripts/packages.sh`](scripts/packages.sh). Verified official SHA256 cryptographic digests for `uv` (`0.6.5`) and `pueue`/`pueued` (`v4.0.4`).
+- **`secret-run` Fail-Closed Hardening**: Verified that [`bin/secret-run`](bin/secret-run) strictly refuses to load files with group/world-accessible permissions (`0644`).
+- **Arbitrary Code Execution Defense**: Injected a command substitution payload (`$(touch /tmp/pwned_marker)`) into `.env`; verified the safe parser aborted execution without triggering side effects.
+- **Complex Value Handling**: Verified proper tokenization of base64 secrets containing equality symbols (`==`) and stripped outer quotes.
+- **Bounded MCP Filesystem**: Verified [`config/mcp/mcp.json`](config/mcp/mcp.json) does not expose bare `.` root mount.
+- **Install Dry-Run**: Verified `./install.sh --dry-run` previews symlinks without modifying disk or creating backup directories.
+- **Circuit Breaker Enforcement**: Verified that engaging `agent-stop` immediately rejects queued task executions (`jagent`), and clearing with `agent-resume` restores functionality.
+- **Telemetry Permissions**: Verified `~/.local/state/agent-traces/traces.log` permissions are strictly restricted to `0600`.
+
+```text
+[RECEIPT PASS] Supply chain defense: Zero unverified curl | sh pipelines detected in package installation
+[RECEIPT PASS] Supply chain defense: Cryptographic SHA256 checksums pinned and enforced for external binaries
+[RECEIPT PASS] secret-run fail-closed: Refused secret file with insecure 0644 permissions
+[RECEIPT PASS] secret-run injection defense: Command substitution was blocked without side effects
+[RECEIPT PASS] secret-run safe parser: Correctly handled base64 equality tokens and stripped quotes
+[RECEIPT PASS] MCP filesystem server scope bounded: Excludes bare '.' root mount
+[RECEIPT PASS] install.sh --dry-run: Preview mode verified with zero filesystem mutations
+[RECEIPT PASS] Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)
+[RECEIPT PASS] Telemetry trace log permissions verified as 0600
 ```
 
 ---

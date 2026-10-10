@@ -31,6 +31,8 @@ usage() {
     echo "  --only-packages    Only install apt packages without linking dotfiles"
     echo "  --skip-links       Skip symlink creation"
     echo "  --target <dir>     Target home directory (default: $HOME)"
+    echo "  -n, --dry-run      Preview actions without modifying the filesystem"
+    echo "  --force-root       Allow running installer directly as root"
     echo "  -h, --help         Show this help message"
     echo ""
 }
@@ -39,6 +41,8 @@ ASSUME_YES=0
 SKIP_PACKAGES=0
 ONLY_PACKAGES=0
 SKIP_LINKS=0
+DRY_RUN=0
+FORCE_ROOT=0
 PROFILE="full"
 TARGET_DIR="${HOME}"
 
@@ -69,6 +73,15 @@ while [[ $# -gt 0 ]]; do
             TARGET_DIR="$2"
             shift 2
             ;;
+        -n|--dry-run|--preview)
+            DRY_RUN=1
+            SKIP_PACKAGES=1
+            shift
+            ;;
+        --force-root)
+            FORCE_ROOT=1
+            shift
+            ;;
         -h|--help)
             usage
             exit 0
@@ -87,7 +100,26 @@ fi
 
 print_banner
 
-if [ "$ASSUME_YES" -eq 0 ]; then
+# Root execution safety check
+if [ "$EUID" -eq 0 ] && [ "$PROFILE" != "cloud" ] && [ "$FORCE_ROOT" -eq 0 ]; then
+    if [ "$ASSUME_YES" -eq 1 ]; then
+        echo -e "${RED}[ERROR]${RESET} Refusing to run as root without --force-root (would install dotfiles into /root)."
+        echo -e "Run as a regular user with sudo privileges, or pass --force-root if intentional."
+        exit 1
+    else
+        echo -e "${YELLOW}[WARN]${RESET} Running as root (EUID=0) will install dotfiles into /root rather than a user home."
+        read -rp "Are you sure you want to proceed as root? [y/N]: " confirm_root
+        case "$confirm_root" in
+            [yY]|[yY][eE][sS]) ;;
+            *)
+                echo "Installation cancelled."
+                exit 0
+                ;;
+        esac
+    fi
+fi
+
+if [ "$ASSUME_YES" -eq 0 ] && [ "$DRY_RUN" -eq 0 ]; then
     echo -e "Bootstrapping system for profile: ${BOLD}${CYAN}${PROFILE}${RESET}"
     echo -e "Target directory: ${BOLD}${TARGET_DIR}${RESET}"
     echo ""
@@ -102,10 +134,24 @@ if [ "$ASSUME_YES" -eq 0 ]; then
 fi
 
 # Ensure all helper scripts and custom binaries are executable
-chmod +x "${DOTFILES_ROOT}/scripts/packages.sh"
-chmod +x "${DOTFILES_ROOT}/scripts/links.sh"
-if [ -d "${DOTFILES_ROOT}/bin" ]; then
-    chmod +x "${DOTFILES_ROOT}/bin"/* 2>/dev/null || true
+if [ "$DRY_RUN" -eq 0 ]; then
+    chmod +x "${DOTFILES_ROOT}/scripts/packages.sh"
+    chmod +x "${DOTFILES_ROOT}/scripts/links.sh"
+    if [ -d "${DOTFILES_ROOT}/bin" ]; then
+        chmod +x "${DOTFILES_ROOT}/bin"/* 2>/dev/null || true
+    fi
+fi
+
+# Handle dry-run preview mode
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo ""
+    echo -e "${BLUE}==>${RESET} ${BOLD}[DRY-RUN] Previewing dotfile symlinks and backups (target: ${TARGET_DIR})...${RESET}"
+    "${DOTFILES_ROOT}/scripts/links.sh" --target "$TARGET_DIR" --dry-run
+    echo ""
+    echo -e "${GREEN}=============================================================${RESET}"
+    echo -e "${BOLD}${GREEN}        [DRY-RUN] Preview Complete (Zero Changes)           ${RESET}"
+    echo -e "${GREEN}=============================================================${RESET}"
+    exit 0
 fi
 
 # Step 1: Install packages

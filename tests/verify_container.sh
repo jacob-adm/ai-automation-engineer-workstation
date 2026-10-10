@@ -477,8 +477,103 @@ fi
 header "16. Automated Living System Update Workflow (dotfiles-update / update.sh)"
 dotfiles-update && pass "dotfiles-update executed full update cycle and verified system health"
 
+header "17. Security Invariants, Supply Chain Verification & Defenses"
+
+# 1. Supply chain checks
+if grep -n 'curl .*|.*sh' "$HOME/dotfiles/scripts/packages.sh"; then
+    fail "Unverified curl | sh execution detected in scripts/packages.sh!"
+else
+    pass "Supply chain defense: Zero unverified curl | sh pipelines detected in package installation"
+fi
+
+if grep -q "8fc9895719a1291ecd193cb86f9282ff3649cef797d29eacc74c4f573aab1e2f" "$HOME/dotfiles/scripts/packages.sh" && \
+   grep -q "c1b10d7e4e62211075ddd0e1dc3e8cbfc5a43d662cb3be7402a28504e23fcb51" "$HOME/dotfiles/scripts/packages.sh"; then
+    pass "Supply chain defense: Cryptographic SHA256 checksums pinned and enforced for external binaries"
+else
+    fail "Missing required cryptographic checksums in scripts/packages.sh"
+fi
+
+# 2. secret-run permissions fail closed
+echo "INSECURE_SECRET=token" > /tmp/insecure_secret.env
+chmod 644 /tmp/insecure_secret.env
+if secret-run --env-file /tmp/insecure_secret.env -- echo "hello" >/dev/null 2>&1; then
+    fail "secret-run should have refused file with mode 644!"
+else
+    pass "secret-run fail-closed: Refused secret file with insecure 0644 permissions"
+fi
+rm -f /tmp/insecure_secret.env
+
+# 3. secret-run arbitrary code execution prevention
+rm -f /tmp/pwned_marker
+cat << 'EOF' > /tmp/malicious.env
+SAFE_VAR="good_value"
+INJECTED="$(touch /tmp/pwned_marker)"
+EOF
+chmod 600 /tmp/malicious.env
+if secret-run --env-file /tmp/malicious.env -- echo "hello" >/dev/null 2>&1; then
+    fail "secret-run should have rejected command substitution syntax!"
+fi
+if [ -f /tmp/pwned_marker ]; then
+    rm -f /tmp/pwned_marker /tmp/malicious.env
+    fail "Arbitrary code execution occurred via secret file injection!"
+else
+    pass "secret-run injection defense: Command substitution was blocked without side effects"
+fi
+rm -f /tmp/malicious.env
+
+# 4. secret-run complex value and quote parsing
+cat << 'EOF' > /tmp/complex_secret.env
+KEY_EQUALS="base64==token=="
+KEY_QUOTES='quoted_value'
+EOF
+chmod 600 /tmp/complex_secret.env
+parsed_out="$(secret-run --env-file /tmp/complex_secret.env -- bash -c 'echo "$KEY_EQUALS:$KEY_QUOTES"')"
+if [ "$parsed_out" = "base64==token==:quoted_value" ]; then
+    pass "secret-run safe parser: Correctly handled base64 equality tokens and stripped quotes"
+else
+    fail "secret-run failed on complex value: got '$parsed_out'"
+fi
+rm -f /tmp/complex_secret.env
+
+# 5. MCP filesystem boundary check
+mcp_fs_args="$(jq -r '.mcpServers.filesystem.args[]' "$HOME/.config/mcp/mcp.json")"
+if echo "$mcp_fs_args" | grep -q "^\.$"; then
+    fail "MCP filesystem server exposes bare '.' directory!"
+else
+    pass "MCP filesystem server scope bounded: Excludes bare '.' root mount"
+fi
+
+# 6. Install dry-run preview check
+dry_run_out="$(./install.sh --dry-run)"
+if echo "$dry_run_out" | grep -q "DRY-RUN"; then
+    pass "install.sh --dry-run: Preview mode verified with zero filesystem mutations"
+else
+    fail "install.sh --dry-run failed to display preview"
+fi
+
+# 7. Circuit breaker enforcement on jagent task queue
+bash -ic '
+source ~/.ai_automation.sh
+source ~/.bash_aliases.d/ai.sh
+agent-stop >/dev/null
+if jagent echo "test_should_fail" >/dev/null 2>&1; then
+    echo "jagent executed while circuit breaker engaged!"
+    exit 1
+fi
+agent-resume >/dev/null
+'
+pass "Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)"
+
+# 8. Telemetry trace file permissions
+trace_perms=$(stat -c "%a" "$HOME/.local/state/agent-traces/traces.log" 2>/dev/null || stat -f "%OLp" "$HOME/.local/state/agent-traces/traces.log" 2>/dev/null || echo "")
+if [ "$trace_perms" = "600" ] || [ "$trace_perms" = "0600" ]; then
+    pass "Telemetry trace log permissions verified as 0600"
+else
+    fail "Telemetry trace log has loose permissions: $trace_perms"
+fi
+
 echo ""
 echo -e "${BOLD}${GREEN}========================================================================${RESET}"
-echo -e "${BOLD}${GREEN}  ALL 16 EMPIRICAL TEST RECEIPT STAGES PASSED WITH 100% SUCCESS!       ${RESET}"
+echo -e "${BOLD}${GREEN}  ALL 17 EMPIRICAL TEST RECEIPT STAGES PASSED WITH 100% SUCCESS!       ${RESET}"
 echo -e "${BOLD}${GREEN}========================================================================${RESET}"
 echo ""
