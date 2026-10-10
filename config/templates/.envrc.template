@@ -1,0 +1,12 @@
+# .envrc template for direnv
+# Use in project roots to load environment-specific tokens on cd
+
+# Example model API keys (scoped strictly to this project)
+# export OPENAI_API_KEY="sk-..."
+# export ANTHROPIC_API_KEY="sk-ant-..."
+# export GEMINI_API_KEY="..."
+# export HUGGING_FACE_HUB_TOKEN="hf_..."
+# export WANDB_API_KEY="..."
+
+# Python virtual environment automatic layout
+layout python3

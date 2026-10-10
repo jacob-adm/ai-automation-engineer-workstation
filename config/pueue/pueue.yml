@@ -1,0 +1,14 @@
+# config/pueue/pueue.yml: Configuration for background experiment and agent harness task queue
+client:
+  restart_in_place: false
+  read_local_logs: true
+  show_expanded_aliases: false
+  dark_mode: true
+
+daemon:
+  default_parallel_tasks: 1
+  pause_on_failure: false
+  groups:
+    default: 1
+    experiments: 2
+    agents: 4

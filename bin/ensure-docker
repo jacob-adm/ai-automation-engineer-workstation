@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# bin/ensure-docker: Linux/Ubuntu native self-healing Docker daemon starter and validator
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+log_info()    { echo -e "${CYAN}[INFO]${RESET} $*"; }
+log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
+log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
+
+if ! command -v docker >/dev/null 2>&1; then
+    log_error "Docker CLI is not installed on this system."
+    exit 1
+fi
+
+# If docker is already healthy and responsive, exit immediately
+if docker info >/dev/null 2>&1; then
+    log_success "Docker daemon is running and accessible."
+    exit 0
+fi
+
+log_warn "Docker daemon is not responding. Checking Linux service and permissions..."
+
+# Check socket permissions
+if [ -S /var/run/docker.sock ]; then
+    if ! [ -r /var/run/docker.sock ] || ! [ -w /var/run/docker.sock ]; then
+        if ! id -nG | grep -qw docker; then
+            log_error "Current user '$(whoami)' is not in the 'docker' group."
+            echo -e "To grant docker permissions without root, run:"
+            echo -e "  ${BOLD}sudo usermod -aG docker $(whoami) && newgrp docker${RESET}"
+            exit 1
+        fi
+    fi
+fi
+
+# Attempt to start Docker service via systemd or init service
+STARTED=0
+if command -v systemctl >/dev/null 2>&1 && systemctl status docker >/dev/null 2>&1; then
+    log_info "Attempting to start docker via systemctl..."
+    if [ "$EUID" -eq 0 ]; then
+        systemctl start docker || true
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo systemctl start docker || true
+    fi
+    STARTED=1
+elif command -v service >/dev/null 2>&1 && service docker status >/dev/null 2>&1; then
+    log_info "Attempting to start docker via service..."
+    if [ "$EUID" -eq 0 ]; then
+        service docker start || true
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo service docker start || true
+    fi
+    STARTED=1
+fi
+
+# Wait up to 15 seconds for daemon to respond
+log_info "Waiting for Docker daemon to become responsive..."
+for i in {1..15}; do
+    if docker info >/dev/null 2>&1; then
+        log_success "Docker daemon started and responsive!"
+        exit 0
+    fi
+    sleep 1
+done
+
+log_error "Docker daemon failed to become responsive within 15 seconds."
+if [ "$STARTED" -eq 0 ]; then
+    log_warn "Docker service was not found in systemctl or service managers. If inside a container, ensure Docker socket is mounted (-v /var/run/docker.sock:/var/run/docker.sock)."
+fi
+exit 1

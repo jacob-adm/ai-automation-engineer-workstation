@@ -1,0 +1,219 @@
+#!/usr/bin/env bash
+# bin/doctor: Self-healing health check and diagnostic tool ("The Spilled Coffee Principle")
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+# Resolve physical path to this script even if executed via symlink
+SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SCRIPT_SOURCE" ]; do
+    SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd)"
+    SCRIPT_SOURCE="$(readlink "$SCRIPT_SOURCE")"
+    [[ $SCRIPT_SOURCE != /* ]] && SCRIPT_SOURCE="$SCRIPT_DIR/$SCRIPT_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd)"
+DOTFILES_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+FIX_MODE=0
+if [ "${1:-}" = "--fix" ] || [ "${1:-}" = "-f" ]; then
+    FIX_MODE=1
+fi
+
+if [ "$FIX_MODE" -eq 1 ]; then
+    "${DOTFILES_ROOT}/scripts/links.sh" >/dev/null 2>&1 || true
+fi
+
+TOTAL_CHECKS=0
+PASSED_CHECKS=0
+WARNING_CHECKS=0
+FAILED_CHECKS=0
+
+pass() {
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+    PASSED_CHECKS=$((PASSED_CHECKS + 1))
+    echo -e " ${GREEN}✓${RESET} $*"
+}
+
+warn() {
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+    WARNING_CHECKS=$((WARNING_CHECKS + 1))
+    echo -e " ${YELLOW}⚠${RESET} $*"
+}
+
+fail() {
+    TOTAL_CHECKS=$((TOTAL_CHECKS + 1))
+    FAILED_CHECKS=$((FAILED_CHECKS + 1))
+    echo -e " ${RED}✗${RESET} $*"
+}
+
+header() {
+    echo -e "\n${BOLD}${CYAN}=== $* ===${RESET}"
+}
+
+echo -e "${BOLD}${CYAN}=====================================================${RESET}"
+echo -e "${BOLD}${CYAN}        ENVIRONMENT HEALTH CHECK (DOCTOR)            ${RESET}"
+echo -e "${BOLD}${CYAN}=====================================================${RESET}"
+
+# 1. Symlinks Check
+header "Checking Dotfile Symlinks"
+EXPECTED_LINKS=(
+    "$HOME/.bashrc"
+    "$HOME/.bash_aliases"
+    "$HOME/.bash_profile"
+    "$HOME/.profile"
+    "$HOME/.gitconfig"
+    "$HOME/.gitignore_global"
+    "$HOME/.tmux.conf"
+    "$HOME/.vimrc"
+    "$HOME/.npmrc"
+    "$HOME/.config/uv/uv.toml"
+    "$HOME/.config/pueue/pueue.yml"
+    "$HOME/.ai_automation.sh"
+    "$HOME/.config/mcp/mcp.json"
+    "$HOME/.config/agents/AGENTS.md"
+    "$HOME/.claude/CLAUDE.md"
+    "$HOME/.claude/settings.json"
+    "$HOME/.config/opencode/opencode.json"
+    "$HOME/.local/bin/agent-worktree"
+    "$HOME/.local/bin/check-mcp-logs"
+    "$HOME/.local/bin/doctor"
+    "$HOME/.local/bin/dotfiles-update"
+    "$HOME/.local/bin/ensure-docker"
+    "$HOME/.local/bin/gha-failed-logs"
+    "$HOME/.local/bin/pr-checkout"
+    "$HOME/.local/bin/secret-run"
+    "$HOME/.local/bin/sysinfo"
+)
+
+for target in "${EXPECTED_LINKS[@]}"; do
+    if [ ! -L "$target" ] || [ ! -e "$target" ]; then
+        if [ "$FIX_MODE" -eq 1 ]; then
+            "${DOTFILES_ROOT}/scripts/links.sh" >/dev/null 2>&1 || true
+        fi
+        if [ -L "$target" ] && [ -e "$target" ]; then
+            pass "Symlink restored and verified: $target -> $(readlink "$target")"
+        else
+            fail "Missing or broken symlink: $target"
+        fi
+    else
+        pass "Symlink verified: $target -> $(readlink "$target")"
+    fi
+done
+
+# 2. Tooling Check
+header "Checking Core & AI Tooling"
+TOOLS=(
+    "git:Git version control"
+    "tmux:Terminal multiplexer"
+    "vim:Text editor"
+    "uv:Python & AI package manager"
+    "direnv:Directory-scoped environment manager"
+    "pueue:Background task queue"
+    "zoxide:Smart directory navigation"
+    "rg:Ripgrep code search"
+    "fzf:Fuzzy finder"
+    "htop:Process monitor"
+    "jq:JSON processor"
+)
+
+for item in "${TOOLS[@]}"; do
+    cmd="${item%%:*}"
+    desc="${item##*:}"
+    if command -v "$cmd" >/dev/null 2>&1; then
+        pass "$cmd ($desc)"
+    else
+        fail "Missing command: $cmd ($desc)"
+    fi
+done
+
+# Check bat and fd fallbacks
+if command -v batcat >/dev/null 2>&1 || command -v bat >/dev/null 2>&1; then
+    pass "bat/batcat (Syntax-highlighted cat)"
+else
+    fail "Missing command: bat/batcat"
+fi
+
+if command -v fdfind >/dev/null 2>&1 || command -v fd >/dev/null 2>&1; then
+    pass "fd/fdfind (Fast file discovery)"
+else
+    fail "Missing command: fd/fdfind"
+fi
+
+# 3. Docker Service Check
+header "Checking Docker Daemon"
+if command -v docker >/dev/null 2>&1; then
+    if docker info >/dev/null 2>&1; then
+        pass "Docker daemon is reachable and running"
+    else
+        if [ "$FIX_MODE" -eq 1 ]; then
+            echo -e " ${YELLOW}↻${RESET} Attempting Docker recovery via ensure-docker..."
+            "${DOTFILES_ROOT}/bin/ensure-docker" >/dev/null 2>&1 || true
+        fi
+        if docker info >/dev/null 2>&1; then
+            pass "Docker daemon recovered and responsive"
+        else
+            warn "Docker daemon is not responding (run 'ensure-docker' or check socket permissions)"
+        fi
+    fi
+else
+    warn "Docker CLI is not installed"
+fi
+
+# 4. Git Identity Check
+header "Checking Git Identity"
+git_user=$(git config --global user.name 2>/dev/null || echo "")
+git_email=$(git config --global user.email 2>/dev/null || echo "")
+
+if [ -n "$git_user" ] && [ -n "$git_email" ]; then
+    pass "Git identity configured: $git_user <$git_email>"
+else
+    warn "Git identity incomplete. Set via: git config --global user.name ... and user.email ..."
+fi
+
+# 5. Agent Guardrails Check
+header "Checking AI Agent Circuit Breaker"
+if [ -f "$HOME/.agent_stop" ]; then
+    warn "Circuit breaker is ENGAGED (~/.agent_stop exists). Clear with 'agent-resume'."
+else
+    pass "Circuit breaker is clear / ready (all automated agent loops permitted)"
+fi
+
+# 6. Modular Aliases Check
+header "Checking Modular Shell Aliases (~/.bash_aliases.d)"
+if [ -d "$HOME/.bash_aliases.d" ]; then
+    pass "~/.bash_aliases.d directory exists ($(find "$HOME/.bash_aliases.d" -name "*.sh" | wc -l | tr -d ' ') modules)"
+else
+    fail "~/.bash_aliases.d directory missing"
+fi
+
+# 7. AI Coding Agents Check
+header "Checking AI Coding Agent Setup (Claude Code & OpenCode)"
+if [ -L "$HOME/.claude/CLAUDE.md" ] && [ -L "$HOME/.claude/settings.json" ]; then
+    pass "Claude Code unified instructions and settings verified (~/.claude)"
+else
+    fail "Claude Code configuration missing or broken"
+fi
+
+if [ -L "$HOME/.config/opencode/opencode.json" ]; then
+    pass "OpenCode unified configuration verified (~/.config/opencode)"
+else
+    fail "OpenCode configuration missing or broken"
+fi
+
+# Summary
+echo -e "\n${BOLD}${CYAN}=====================================================${RESET}"
+echo -e "Doctor Summary: ${BOLD}${GREEN}$PASSED_CHECKS Passed${RESET}, ${BOLD}${YELLOW}$WARNING_CHECKS Warnings${RESET}, ${BOLD}${RED}$FAILED_CHECKS Failed${RESET} (out of $TOTAL_CHECKS checks)"
+echo -e "${BOLD}${CYAN}=====================================================${RESET}"
+
+if [ "$FAILED_CHECKS" -gt 0 ]; then
+    if [ "$FIX_MODE" -eq 0 ]; then
+        echo -e "Tip: Run ${BOLD}doctor --fix${RESET} to automatically remediate drift."
+    fi
+    exit 1
+fi

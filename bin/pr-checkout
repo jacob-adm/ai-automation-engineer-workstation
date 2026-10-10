@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+# bin/pr-checkout: Fast PR branch fetcher and isolated worktree reviewer for GitHub & Bitbucket
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+log_info()    { echo -e "${CYAN}[INFO]${RESET} $*"; }
+log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
+log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
+log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
+
+usage() {
+    cat << EOF
+${BOLD}pr-checkout${RESET} - Fetch and review pull requests or remote branches locally or in an isolated worktree
+
+${BOLD}Usage:${RESET}
+  pr-checkout <pr-number|branch-name>              Checkout branch in current working directory
+  pr-checkout --worktree <pr-number|branch-name>   Checkout into isolated .worktrees/<name>
+
+${BOLD}Examples:${RESET}
+  # GitHub PR by number:
+  pr-checkout 42
+  pr-checkout --worktree 42
+
+  # Bitbucket or GitHub by branch name:
+  pr-checkout feature/auth-fix
+  pr-checkout --worktree agent/refactor-mcp
+EOF
+}
+
+USE_WORKTREE=0
+TARGET_REF=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --worktree|-w)
+            USE_WORKTREE=1
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            TARGET_REF="$1"
+            shift
+            ;;
+    esac
+done
+
+if [ -z "$TARGET_REF" ]; then
+    usage
+    exit 1
+fi
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log_error "Not inside a git repository."
+    exit 1
+fi
+
+REMOTE_URL="$(git remote get-url origin 2>/dev/null || echo "")"
+IS_GITHUB=0
+IS_BITBUCKET=0
+
+if echo "$REMOTE_URL" | grep -qi "github.com"; then
+    IS_GITHUB=1
+elif echo "$REMOTE_URL" | grep -qi "bitbucket.org"; then
+    IS_BITBUCKET=1
+fi
+
+# Clean branch name for worktree folder (replace slashes with dashes)
+CLEAN_NAME="${TARGET_REF//\//-}"
+if [[ "$TARGET_REF" =~ ^[0-9]+$ ]]; then
+    CLEAN_NAME="pr-${TARGET_REF}"
+fi
+
+fetch_ref() {
+    # If numeric PR number
+    if [[ "$TARGET_REF" =~ ^[0-9]+$ ]]; then
+        if [ "$IS_GITHUB" -eq 1 ]; then
+            log_info "Fetching GitHub PR #${TARGET_REF}..."
+            git fetch origin "pull/${TARGET_REF}/head:${CLEAN_NAME}"
+            return 0
+        elif [ "$IS_BITBUCKET" -eq 1 ]; then
+            # Bitbucket Server PR ref format fallback
+            if git fetch origin "+refs/pull-requests/${TARGET_REF}/from:${CLEAN_NAME}" 2>/dev/null; then
+                log_info "Fetched Bitbucket PR #${TARGET_REF}."
+                return 0
+            fi
+            # If not found via Server ref, search remote branches
+            log_info "Searching for Bitbucket branch matching PR #${TARGET_REF}..."
+            local matched_branch
+            matched_branch="$(git ls-remote --heads origin | awk '{print $2}' | sed 's#refs/heads/##' | grep -E "(^|/|-)0*${TARGET_REF}(-|$)" | head -n 1 || true)"
+            if [ -n "$matched_branch" ]; then
+                log_info "Found remote branch: $matched_branch"
+                git fetch origin "${matched_branch}:${CLEAN_NAME}"
+                return 0
+            fi
+            log_error "Could not automatically resolve PR #${TARGET_REF} on Bitbucket. Please specify the branch name (e.g. pr-checkout feature/branch-name)."
+            exit 1
+        else
+            # Generic fallback: try pull/<num>/head
+            git fetch origin "pull/${TARGET_REF}/head:${CLEAN_NAME}" 2>/dev/null || {
+                log_error "Could not resolve numeric PR #${TARGET_REF}. Please pass branch name directly."
+                exit 1
+            }
+        fi
+    else
+        # Target is a branch name (e.g. feature/foo, agent/bar)
+        log_info "Fetching branch '${TARGET_REF}' from origin..."
+        git fetch origin "${TARGET_REF}:${CLEAN_NAME}" 2>/dev/null || git fetch origin "${TARGET_REF}"
+    fi
+}
+
+fetch_ref
+
+if [ "$USE_WORKTREE" -eq 1 ]; then
+    log_info "Creating isolated worktree at .worktrees/${CLEAN_NAME}..."
+    agent-worktree new "${CLEAN_NAME}" "${CLEAN_NAME}"
+    log_success "PR / Branch ready for review in: .worktrees/${CLEAN_NAME}"
+    echo ""
+    echo -e "To enter your isolated review environment:"
+    echo -e "  ${BOLD}cd .worktrees/${CLEAN_NAME}${RESET}"
+    echo -e "  ${BOLD}./tests/run_tests.sh${RESET}"
+    echo ""
+    echo -e "When finished, discard the review worktree:"
+    echo -e "  ${BOLD}agent-worktree remove ${CLEAN_NAME}${RESET}"
+else
+    if [[ "$TARGET_REF" =~ ^[0-9]+$ ]] && [ "$IS_GITHUB" -eq 1 ] && command -v gh >/dev/null 2>&1; then
+        gh pr checkout "$TARGET_REF"
+    else
+        git checkout "${CLEAN_NAME}"
+    fi
+    log_success "Checked out '${TARGET_REF}' locally."
+fi

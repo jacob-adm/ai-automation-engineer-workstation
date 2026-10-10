@@ -1,0 +1,4 @@
+# Global uv configuration for AI & Python package management
+# Enables link mode cache optimization
+link-mode = "clone"
+compile-bytecode = true
