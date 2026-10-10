@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# bin/gha-failed-logs: Fetch latest failed GitHub Actions logs for AI agents and terminal debugging
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+log_info()  { echo -e "${CYAN}[INFO]${RESET} $*" >&2; }
+log_error() { echo -e "${RED}[ERROR]${RESET} $*" >&2; }
+
+if ! command -v gh >/dev/null 2>&1; then
+    log_error "GitHub CLI ('gh') is not installed. Install via: sudo apt install gh"
+    exit 1
+fi
+
+REPO=""
+if [ $# -gt 0 ] && [[ "$1" == *"/"* ]]; then
+    REPO="$1"
+    shift
+elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    remote_url=$(git remote get-url origin 2>/dev/null || echo "")
+    if [ -n "$remote_url" ]; then
+        # Parse owner/repo from https or ssh url
+        REPO=$(echo "$remote_url" | sed -E 's#^.*github\.com[:/]([^/]+/[^/.]+)(\.git)?$#\1#')
+    fi
+fi
+
+if [ -z "$REPO" ]; then
+    echo "Usage: gha-failed-logs [owner/repo]"
+    echo "Or run inside a git repository configured with a GitHub remote."
+    exit 1
+fi
+
+log_info "Querying latest failed GitHub Actions runs for $REPO..."
+
+# Find latest failed run
+latest_run_id=$(gh run list -R "$REPO" -L 10 --status failure --json databaseId,name,headBranch --jq '.[0].databaseId' 2>/dev/null || echo "")
+
+if [ -z "$latest_run_id" ] || [ "$latest_run_id" = "null" ]; then
+    echo -e "${GREEN}[OK]${RESET} No failed workflow runs found for $REPO."
+    exit 0
+fi
+
+echo -e "${BOLD}${RED}=== Latest Failed GitHub Actions Run ($latest_run_id) ===${RESET}"
+gh run view "$latest_run_id" -R "$REPO"
+
+echo -e "\n${BOLD}${YELLOW}=== Failed Step Logs ===${RESET}"
+gh run view "$latest_run_id" -R "$REPO" --log-failed

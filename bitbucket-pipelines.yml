@@ -1,0 +1,27 @@
+# bitbucket-pipelines.yml: Automated CI/CD test verification for AI Automation Engineer Workstation
+image: docker:26-cli
+
+pipelines:
+  default:
+    - step:
+        name: Verify Baseline Test Suite
+        services:
+          - docker
+        script:
+          - apk add --no-cache bash git
+          - ./tests/run_tests.sh
+
+  pull-requests:
+    '**':
+      - step:
+          name: Verify Pull Request Test Suite
+          services:
+            - docker
+          script:
+            - apk add --no-cache bash git
+            - ./tests/run_tests.sh
+
+definitions:
+  services:
+    docker:
+      memory: 2048

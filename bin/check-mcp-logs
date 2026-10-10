@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# bin/check-mcp-logs: Inspect, tail, and manage MCP server logs across AI harnesses
+
+set -euo pipefail
+
+BOLD="\033[1m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+RED="\033[0;31m"
+CYAN="\033[0;36m"
+RESET="\033[0m"
+
+log_info()  { echo -e "${CYAN}[INFO]${RESET} $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${RESET} $*"; }
+
+usage() {
+    cat << EOF
+${BOLD}check-mcp-logs${RESET} - View and manage Model Context Protocol (MCP) server logs
+
+${BOLD}Usage:${RESET}
+  check-mcp-logs           Show recent log entries
+  check-mcp-logs --tail    Follow logs in real-time
+  check-mcp-logs --clear   Clear MCP log files
+EOF
+}
+
+CANDIDATE_DIRS=(
+    "$HOME/.local/state/mcp"
+    "$HOME/.claude/logs"
+    "$HOME/.gemini/antigravity-ide/logs"
+    ".mcp/logs"
+)
+
+FOUND_LOGS=()
+for dir in "${CANDIDATE_DIRS[@]}"; do
+    if [ -d "$dir" ]; then
+        while IFS= read -r file; do
+            [ -f "$file" ] && FOUND_LOGS+=("$file")
+        done < <(find "$dir" -maxdepth 2 -type f \( -name "*.log" -o -name "*mcp*" \) 2>/dev/null || true)
+    fi
+done
+
+PRIMARY_LOG="$HOME/.local/state/mcp/mcp-server.log"
+mkdir -p "$(dirname "$PRIMARY_LOG")"
+
+case "${1:-}" in
+    --tail|-f)
+        if [ ${#FOUND_LOGS[@]} -gt 0 ]; then
+            log_info "Following latest MCP log: ${FOUND_LOGS[0]} (Ctrl+C to stop)..."
+            tail -f "${FOUND_LOGS[0]}"
+        elif [ -f "$PRIMARY_LOG" ]; then
+            log_info "Following $PRIMARY_LOG..."
+            tail -f "$PRIMARY_LOG"
+        else
+            touch "$PRIMARY_LOG"
+            log_info "Following $PRIMARY_LOG (empty)..."
+            tail -f "$PRIMARY_LOG"
+        fi
+        ;;
+    --clear)
+        if [ ${#FOUND_LOGS[@]} -gt 0 ]; then
+            for f in "${FOUND_LOGS[@]}"; do
+                > "$f"
+                log_info "Cleared: $f"
+            done
+        else
+            > "$PRIMARY_LOG"
+            log_info "Cleared: $PRIMARY_LOG"
+        fi
+        ;;
+    -h|--help)
+        usage
+        ;;
+    *)
+        echo -e "${BOLD}${CYAN}=== Model Context Protocol (MCP) Logs ===${RESET}"
+        if [ ${#FOUND_LOGS[@]} -eq 0 ]; then
+            echo "No existing MCP log files found."
+            echo "Configured primary log directory: $HOME/.local/state/mcp/"
+        else
+            for f in "${FOUND_LOGS[@]}"; do
+                echo -e "\n${BOLD}${YELLOW}Log: $f${RESET}"
+                echo "----------------------------------------"
+                tail -n 20 "$f"
+                echo "----------------------------------------"
+            done
+            echo "Tip: Run 'check-mcp-logs --tail' to follow logs live."
+        fi
+        ;;
+esac

@@ -1,0 +1,16 @@
+# ~/.bash_aliases.d/git.sh: Git shortcuts and helpers
+
+alias gs='git status -sb'
+alias gst='git status'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gl='git log --graph --pretty=format:"%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset" --abbrev-commit'
+alias gco='git checkout'
+alias gb='git branch -v'
+alias gp='git pull'
+alias gP='git push'
+alias gaa='git add --all'
+alias gc='git commit'
+alias gcm='git commit -m'
+alias gca='git commit --amend'
+alias gunstage='git reset HEAD --'

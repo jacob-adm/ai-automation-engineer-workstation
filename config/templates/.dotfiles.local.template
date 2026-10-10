@@ -1,0 +1,11 @@
+# ~/.dotfiles.local - Machine-specific credentials and configurations
+# Ensure this file has strict permissions: chmod 600 ~/.dotfiles.local
+
+# Git Author details (machine-specific)
+export GIT_AUTHOR_NAME="Your Name"
+export GIT_AUTHOR_EMAIL="your.email@example.com"
+export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
+export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+
+# Default Model Endpoints (optional)
+# export OPENAI_API_BASE="https://api.openai.com/v1"
