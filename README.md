@@ -313,3 +313,8 @@ This repository draws inspiration from the following open-source dotfiles and AI
 - **[atxtechbro/dotfiles](https://github.com/atxtechbro/dotfiles)** — Vendor-agnostic Model Context Protocol (`mcp.json`) architecture, MCP log inspection, Docker daemon checking, and PR review workflows.
 - **[jplhughes/dotfiles](https://github.com/jplhughes/dotfiles)** & **[drmowinckels/dotfiles](https://github.com/drmowinckels/dotfiles)** — Modular shell configuration structure and terminal ergonomics.
 
+---
+
+## Author & Contact
+
+Jacob Adm is an AI Automation Engineer currently focusing on enterprise autonomous agent orchestration, deterministic runtime architectures, and high-assurance multi-agent systems. Follow for more deep dives on systems engineering with autonomous AI: [linkedin.com/in/jacobadm](http://linkedin.com/in/jacobadm)
