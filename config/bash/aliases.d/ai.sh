@@ -15,6 +15,15 @@ alias aw-rm='agent-worktree remove'
 jrun() {
     local group="${1:-default}"
     shift || true
+
+    # Enforce circuit breaker check for automated agent executions
+    if [ "$group" = "agents" ] && command -v agent-guard-check >/dev/null 2>&1; then
+        if ! agent-guard-check "jrun:$group"; then
+            echo -e "\033[01;31m[CIRCUIT BREAKER]\033[00m Job rejected for group '$group'." >&2
+            return 1
+        fi
+    fi
+
     if command -v pueue >/dev/null 2>&1; then
         if ! pueue status >/dev/null 2>&1; then
             pueued --daemonize >/dev/null 2>&1 || true

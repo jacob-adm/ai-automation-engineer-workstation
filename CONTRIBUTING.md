@@ -121,7 +121,7 @@ git checkout -b feature/my-feature
 ```bash
 ./tests/run_tests.sh
 ```
-Verify that all 16 test stages pass with 100% success.
+Verify that all 17 test stages pass with 100% success.
 
 ---
 

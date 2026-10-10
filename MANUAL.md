@@ -233,6 +233,10 @@ secret-run -- python -c "import os; print('Loaded key:', os.getenv('OPENAI_API_K
 secret-run --env-file ~/.secrets/production.env -- pytest tests/
 ```
 
+> [!IMPORTANT]
+> **Deterministic Fail-Closed Security:**  
+> `secret-run` strictly enforces a fail-closed policy. Secret files must have `0600` or `0400` permissions (owner read/write only) and be owned by the executing user; loose permissions (`0644`, `0777`) abort execution immediately. Furthermore, `secret-run` parses secrets via a safe, tokenized Key-Value parser that rejects command substitutions (`$()`, backticks), protecting against arbitrary code execution from malicious `.env` files.
+
 > [!TIP]
 > **Directory-Scoped Secrets with `direnv`:**  
 > For repositories where you want credentials automatically loaded only while your terminal is inside that specific directory, the workstation pre-configures `direnv`. Copy `.envrc.template` to `.envrc`, populate your project tokens, run `direnv allow`, and tokens will cleanly mount on `cd` and unmount on `cd ..`.
@@ -284,6 +288,8 @@ Attackers monitor popular LLM hallucination patterns and publish malicious packa
    Every dependency resolution automatically cross-references the OSV (Open Source Vulnerabilities) database for known CVEs and malicious signatures.
 3. **npm Lifecycle Script Neutralization (`ignore-scripts=true`)**:  
    In [`config/npm/.npmrc`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/npm/.npmrc), `ignore-scripts=true` prevents npm from running arbitrary `preinstall`, `install`, or `postinstall` bash scripts that infostealer worms use to steal browser cookies and SSH keys.
+4. **Cryptographic Checksum Pinning & Zero `curl | sh`**:  
+   When bootstrapping binaries (`uv`, `pueue`), [`scripts/packages.sh`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/scripts/packages.sh) enforces official SHA256 cryptographic digests before binary placement into `/usr/local/bin`, completely eliminating unauthenticated remote shell execution pipelines.
 
 ---
 
@@ -393,6 +399,7 @@ The workstation implements an **out-of-band** control plane via [`config/ai_auto
   ```bash
   agent-guard-check "my-eval-agent" || exit 1
   ```
+* **Task Queue Integration (`jagent`)**: The Pueue workload supervisor wrapper for autonomous agents (`jagent`) automatically invokes `agent-guard-check` before enqueueing jobs, guaranteeing that tripping `agent-stop` immediately rejects queued autonomous execution loops.
 
 ---
 
