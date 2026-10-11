@@ -204,8 +204,10 @@ Whenever you unleash an agent, [`secret-run`](bin/secret-run) loads these variab
 #### Need to update keys or switch to free local AI?
 - **Cloud Models (Gemini, Claude, OpenAI)**: Simply edit `~/.secrets/ai.env` and paste your real API tokens.
 - **100% Free Local AI (Offline via Ollama)**:
+  Download and inspect the official installer:
   ```bash
-  curl -fsSL https://ollama.com/install.sh | sh
+  curl -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+  bash /tmp/ollama-install.sh
   ollama run qwen2.5-coder:7b
   echo 'OPENAI_BASE_URL="http://localhost:11434/v1"' >> ~/.secrets/ai.env
   echo 'OPENAI_API_KEY="ollama"' >> ~/.secrets/ai.env
@@ -612,8 +614,10 @@ Think of agents like energetic interns (autonomous worker processes). If you hir
 
 **How to do it in 2 minutes:**
 1. **Install Ollama** (the simplest local AI runner):
+   Download and execute the official installer:
    ```bash
-   curl -fsSL https://ollama.com/install.sh | sh
+   curl -fsSL https://ollama.com/install.sh -o /tmp/ollama-install.sh
+   bash /tmp/ollama-install.sh
    ```
 2. **Download a smart coding model**:
    ```bash
@@ -647,7 +651,7 @@ Here are the 3 best ways:
    - Install the **Dev Containers** extension in VS Code.
    - Click "Open Folder in Container" on this dotfiles repo. You are instantly pair-programming inside the container!
 3. **Web Browser VS Code (`code-server`)**:
-   - If you're on an iPad or Chromebook, you can install `code-server` on your Ubuntu machine (`curl -fsSL https://code-server.dev/install.sh | sh`).
+   - If you're on an iPad or Chromebook, you can install `code-server` on your Ubuntu machine (`curl -fsSL https://code-server.dev/install.sh -o /tmp/code-server-install.sh && sh /tmp/code-server-install.sh`, or via `npm install -g code-server`).
    - Open a browser tab to `http://<your-ip>:8080`, and you have full VS Code right inside Chrome!
 
 ---

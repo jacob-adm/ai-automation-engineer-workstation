@@ -332,6 +332,7 @@ Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`
   - Unclosed double quotes (`KEY="val`) strictly rejected with non-zero exit code.
   - Unclosed single quotes (`KEY='val`) strictly rejected with non-zero exit code.
   - Clean export of empty values (`KEY=` and `export KEY=`).
+  - Strict mode (`--strict` / `SECRET_RUN_STRICT=1`) blocks ambient `.env` discovery when running on untrusted repositories.
 - **Bounded MCP Filesystem**: Verified [`config/mcp/mcp.json`](config/mcp/mcp.json) does not expose bare `.` root mount.
 - **Install Dry-Run**: Verified `./install.sh --dry-run` previews symlinks without modifying disk or creating backup directories.
 - **Circuit Breaker Enforcement**: Verified that engaging `agent-stop` immediately rejects queued task executions (`jagent`), and clearing with `agent-resume` restores functionality.
@@ -360,6 +361,7 @@ Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`
   [SECURITY PASS] secret-run fail-closed: Rejected file with unclosed double quote
   [SECURITY PASS] secret-run fail-closed: Rejected file with unclosed single quote
   [SECURITY PASS] secret-run parser: Cleanly exported empty string variables (KEY= and export KEY=)
+  [SECURITY PASS] secret-run strict mode: --strict and SECRET_RUN_STRICT=1 block ambient .env auto-discovery
 
 =====================================================
 ==> SECURITY SUITE: 4. Model Context Protocol (MCP) Boundary Verification
