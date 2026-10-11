@@ -9,7 +9,7 @@ Your job is super exciting: you build AI models, run test harnesses, and unleash
 
 That’s what this repository is. Running one script turns a blank Ubuntu machine into a superpower-packed command center.
  
-> 💡 *Looking for the deep architectural guide that explains how agent harnesses work, threat models, supply chain defense, and systems engineering? Read **[The AI Automation Engineer's Field Manual (MANUAL.md)](MANUAL.md)**.*
+> 💡 *Looking for the deep architectural guide that explains how agent harnesses work, threat models, supply chain defense, and systems engineering? Read **[The AI Automation Engineer's Field Manual (MANUAL.md)](MANUAL.md)** and visual reference **[Architectural Diagrams (DIAGRAMS.md)](DIAGRAMS.md)**.*
 
 ---
 
@@ -203,7 +203,7 @@ Here is the exact control manual:
 
 Your private credentials vault was already initialized in **Mission 2** at `~/.secrets/ai.env`. 
 
-Whenever you unleash an agent, [`secret-run`](bin/secret-run) loads these variables into a temporary subshell and destroys them the moment the agent finishes.
+Whenever you unleash an agent, [`secret-run`](../bin/secret-run) loads these variables into a temporary subshell and destroys them the moment the agent finishes.
 
 #### Need to update keys or switch to free local AI?
 - **Cloud Models (Gemini, Claude, OpenAI)**: Simply edit `~/.secrets/ai.env` and paste your real API tokens.
@@ -224,8 +224,8 @@ Whenever you unleash an agent, [`secret-run`](bin/secret-run) loads these variab
 Every coding agent has **three input channels**:
 
 1. **System & Tool Memory (`AGENTS.md` / `CLAUDE.md`)**:
-   - The installer already linked [`config/agents/AGENTS.md`](config/agents/AGENTS.md) to `~/.claude/CLAUDE.md` and `~/.config/agents/AGENTS.md`.
-   - Whenever an agent boots up, it automatically reads this file. It learns how to use [`secret-run`](bin/secret-run), [`agent-worktree`](bin/agent-worktree), and [`pueue`](config/pueue/pueue.yml), and obeys security guardrails automatically.
+   - The installer already linked [`config/agents/AGENTS.md`](../config/agents/AGENTS.md) to `~/.claude/CLAUDE.md` and `~/.config/agents/AGENTS.md`.
+   - Whenever an agent boots up, it automatically reads this file. It learns how to use [`secret-run`](../bin/secret-run), [`agent-worktree`](../bin/agent-worktree), and [`pueue`](../config/pueue/pueue.yml), and obeys security guardrails automatically.
 2. **Project Specification Input (`spec.md`)**:
    - You provide your requirements in a Markdown file in your project folder. The agent reads this file to understand the architecture, data schemas, and design constraints.
 3. **Interactive & Command Prompting**:
@@ -486,7 +486,7 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 
 ### 1. 🔒 The Secret Vault (`secret-run`)
 * **The Problem**: Imagine leaving your house keys and credit cards on the kitchen counter while three robot helpers are vacuuming and dusting. One careless robot might pick up your credit card and post a picture of it online! In AI, putting API keys (`OPENAI_API_KEY`, etc.) in global files means untrusted scripts or LLMs can accidentally leak them.
-* **The Solution**: [`secret-run`](bin/secret-run) is like a locked metal briefcase (temporary scoped subshell environment). When a program needs the credit card, you hand it the briefcase for 5 seconds. The program pays the bill, the briefcase snaps shut, and the rest of your computer never sees the card.
+* **The Solution**: [`secret-run`](../bin/secret-run) is like a locked metal briefcase (temporary scoped subshell environment). When a program needs the credit card, you hand it the briefcase for 5 seconds. The program pays the bill, the briefcase snaps shut, and the rest of your computer never sees the card.
 * **How to use it**:
   ```bash
   secret-run -- python evaluate_model.py
@@ -496,7 +496,7 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 
 ### 2. 🌲 Separate Lego Tables (`agent-worktree` or `aw`)
 * **The Problem**: Imagine you and two friends are building a massive Lego castle at the exact same kitchen table. If you're building the front gate and your friend starts building a spaceship on top of your bricks, everything gets smashed. In Git, when multiple AI agents work on the same folder at the same time, they break your files.
-* **The Solution**: [`agent-worktree`](bin/agent-worktree) gives each AI agent its own folding table in a separate room (Git worktree inside a hidden `.worktrees/` folder). They can make a huge mess, test their ideas, and when their piece is finished, you snap it into the main castle (merge into main branch)!
+* **The Solution**: [`agent-worktree`](../bin/agent-worktree) gives each AI agent its own folding table in a separate room (Git worktree inside a hidden `.worktrees/` folder). They can make a huge mess, test their ideas, and when their piece is finished, you snap it into the main castle (merge into main branch)!
 * **How to use it**:
   ```bash
   aw-new robot-helper-1      # Creates a private room (Git worktree) for the agent
@@ -538,7 +538,7 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 
 ### 6. 🩺 The Robot Medic (`doctor` & `doctor --fix`)
 * **The Problem**: **The Spilled Coffee Principle**—What happens if you spill coffee on your laptop, or you accidentally delete half your configuration files? 
-* **The Solution**: You shouldn't spend 3 days crying and re-installing things. You run [`doctor`](bin/doctor). It runs 48 medical tests (system and symlink verifications) on your system in 2 seconds. If anything is broken, [`doctor --fix`](bin/doctor) heals (self-repairs) it automatically.
+* **The Solution**: You shouldn't spend 3 days crying and re-installing things. You run [`doctor`](../bin/doctor). It runs 48 medical tests (system and symlink verifications) on your system in 2 seconds. If anything is broken, [`doctor --fix`](../bin/doctor) heals (self-repairs) it automatically.
 * **How to use it**:
   ```bash
   doctor         # Check system health (diagnostic runner)
@@ -549,7 +549,7 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 
 ### 7. 📜 House Rules on the Fridge (`AGENTS.md` & `CLAUDE.md`)
 * **The Problem**: When you invite a babysitter over, you leave a note on the fridge saying: *"The baby sleeps at 8, pizza is in the freezer, and don't go into my bedroom."* Coding agents need the same clear boundaries.
-* **The Solution**: We have [`config/agents/AGENTS.md`](config/agents/AGENTS.md). It is taped to the virtual fridge (global system instructions) for Claude Code, OpenCode, Antigravity, and Codex. It tells them:
+* **The Solution**: We have [`config/agents/AGENTS.md`](../config/agents/AGENTS.md). It is taped to the virtual fridge (global system instructions) for Claude Code, OpenCode, Antigravity, and Codex. It tells them:
   - *"Use our local tools like `secret-run` and `agent-worktree`."*
   - *"NEVER read `*.env` files or other agents' worktrees!"*
   - *"Keep your answers concise and write tests!"*
@@ -612,7 +612,7 @@ Think of agents like energetic interns (autonomous worker processes). If you hir
 2. **Context Bankruptcy**: 10 agents querying models simultaneously will burn through your API budget in 15 minutes!
 3. **RAM & CPU Limits**: Each agent processes files, runs linters, and parses Git.
 4. **Our Built-In Guardrails**:
-   - The [`pueue`](config/pueue/pueue.yml) task queue is pre-configured with **`experiments` (max 2 parallel)** and **`agents` (max 4 parallel)** to protect your hardware.
+   - The [`pueue`](../config/pueue/pueue.yml) task queue is pre-configured with **`experiments` (max 2 parallel)** and **`agents` (max 4 parallel)** to protect your hardware.
    - `agent-guard-check` enforces a ceiling of **30 agent spawns per hour** (`AUTO_AGENT_MAX_PER_HOUR=30`) so runaway recursive scripts can't bankrupt you.
 
 ---
