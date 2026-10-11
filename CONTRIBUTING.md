@@ -36,6 +36,17 @@ To test changes interactively without modifying your host system:
 ./tests/sandbox.sh
 ```
 
+### Rust Substrate Verification (Zero-Mock Suite)
+For changes touching `crates/workstation-core` or `crates/workstation-cli`, run the zero-mock Rust test suite and lint checks:
+```bash
+# Run unit, component, integration, acceptance, regression, and E2E tests
+cargo test --workspace
+
+# Enforce zero-lint warnings and standard formatting
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --check
+```
+
 ### Static Syntax Checks
 Ensure all bash scripts pass syntax checks:
 ```bash
@@ -62,7 +73,8 @@ All external binaries installed outside distribution package managers (such as `
 
 ## 📁 Repository Structure & Extension Points
 
-* **CLI Utilities (`bin/`)**: Standalone, well-documented POSIX/bash scripts symlinked to `~/.local/bin/`.
+* **Rust Workspace (`crates/`)**: High-performance domain engine (`workstation-core`) and unified multi-call CLI binary (`workstation-cli`).
+* **CLI Utilities (`bin/`)**: Standalone, well-documented POSIX/bash scripts with fast-path Rust dispatch symlinked to `~/.local/bin/`.
 * **Modular Aliases (`config/bash/aliases.d/`)**: Domain-separated bash aliases (`ai.sh`, `git.sh`, `containers.sh`, `nav.sh`, `sys.sh`).
 * **Symlink Mapping (`scripts/links.sh`)**: The central manifest mapping dotfiles to user home directories.
 * **Package Bootstrapping (`scripts/packages.sh`)**: Non-interactive package installation profiles (`full` vs `minimal`).

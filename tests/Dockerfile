@@ -4,6 +4,14 @@
 # Ubuntu 24.04 workstation or cloud VM (e.g. AWS EC2 'ubuntu' with sudo) to test apt installations.
 # It does NOT mount the host Docker socket (/var/run/docker.sock) and is NOT intended as a hardened production container runtime.
 
+# Stage 1: Build the high-performance Rust workstation binary using standard stable toolchain
+FROM rust:latest AS builder
+WORKDIR /build
+COPY Cargo.toml Cargo.lock ./
+COPY crates ./crates
+RUN cargo build --release --bin workstation
+
+# Stage 2: Ephemeral test sandbox on Ubuntu 24.04
 FROM ubuntu:24.04
 
 # Avoid interactive prompts during base image setup
@@ -32,6 +40,12 @@ COPY --chown=testuser:testuser . /home/testuser/ai-automation-engineer-workstati
 RUN ln -s /home/testuser/ai-automation-engineer-workstation /home/testuser/dotfiles
 
 WORKDIR /home/testuser/ai-automation-engineer-workstation
+
+# Copy pre-compiled binary into user's local bin and target/release directory
+RUN mkdir -p /home/testuser/.local/bin /home/testuser/ai-automation-engineer-workstation/target/release
+COPY --from=builder --chown=testuser:testuser /build/target/release/workstation /home/testuser/.local/bin/workstation
+COPY --from=builder --chown=testuser:testuser /build/target/release/workstation /home/testuser/ai-automation-engineer-workstation/target/release/workstation
+RUN chmod +x /home/testuser/.local/bin/workstation /home/testuser/ai-automation-engineer-workstation/target/release/workstation
 
 # Default command runs the test suite
 CMD ["/bin/bash", "tests/verify_container.sh"]

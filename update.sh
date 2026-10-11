@@ -61,11 +61,21 @@ log_info "Refreshing dotfile symlinks..."
 "${DOTFILES_ROOT}/scripts/links.sh"
 
 # ------------------------------------------------------------------------------
-# Section 5: Toolchain Binary Updates (uv)
+# Section 5: Toolchain Binary Updates (uv & workstation)
 # ------------------------------------------------------------------------------
 if command -v uv >/dev/null 2>&1; then
     log_info "Checking for uv tool updates..."
     uv self update >/dev/null 2>&1 || true
+fi
+
+if command -v cargo >/dev/null 2>&1 && [ -f "${DOTFILES_ROOT}/Cargo.toml" ]; then
+    log_info "Recompiling high-performance Rust workstation binary..."
+    if cargo build --release --manifest-path "${DOTFILES_ROOT}/Cargo.toml" --bin workstation >/dev/null 2>&1; then
+        mkdir -p "${HOME}/.local/bin"
+        cp "${DOTFILES_ROOT}/target/release/workstation" "${HOME}/.local/bin/workstation"
+        chmod +x "${HOME}/.local/bin/workstation"
+        log_success "Updated Rust workstation binary at ${HOME}/.local/bin/workstation"
+    fi
 fi
 
 # ------------------------------------------------------------------------------

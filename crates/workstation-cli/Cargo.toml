@@ -1,0 +1,25 @@
+[package]
+name = "workstation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "workstation"
+path = "src/main.rs"
+
+[dependencies]
+workstation-core = { path = "../workstation-core" }
+anyhow.workspace = true
+clap.workspace = true
+colored.workspace = true
+indicatif.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+nix.workspace = true
+
+[dev-dependencies]
+assert_cmd.workspace = true
+predicates.workspace = true
+tempfile.workspace = true
+

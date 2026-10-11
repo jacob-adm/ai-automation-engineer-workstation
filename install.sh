@@ -212,6 +212,22 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+# Section 8b: High-Performance Rust Substrate (Optional Fast-Path)
+# ------------------------------------------------------------------------------
+if [ "$DRY_RUN" -eq 0 ] && command -v cargo >/dev/null 2>&1 && [ -f "${DOTFILES_ROOT}/Cargo.toml" ]; then
+    echo ""
+    echo -e "${BLUE}==>${RESET} ${BOLD}Step 3: Compiling high-performance Rust workstation binary...${RESET}"
+    if cargo build --release --manifest-path "${DOTFILES_ROOT}/Cargo.toml" --bin workstation >/dev/null 2>&1; then
+        mkdir -p "${TARGET_DIR}/.local/bin"
+        cp "${DOTFILES_ROOT}/target/release/workstation" "${TARGET_DIR}/.local/bin/workstation"
+        chmod +x "${TARGET_DIR}/.local/bin/workstation"
+        echo -e "${GREEN}[OK]${RESET} Rust workstation multi-call binary installed to ${TARGET_DIR}/.local/bin/workstation"
+    else
+        echo -e "${YELLOW}[WARN]${RESET} Rust compilation failed or skipped; falling back to POSIX Bash tools."
+    fi
+fi
+
+# ------------------------------------------------------------------------------
 # Section 9: Post-Installation Verification & Next Steps
 # ------------------------------------------------------------------------------
 echo ""

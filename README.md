@@ -2,9 +2,9 @@
 
 # AI Automation Engineer Workstation: Ubuntu Baseline & Harness
 
-A modular, robust, and security-hardened workstation repository designed for **AI Automation Engineers** and **AI Engineers** (developers running autonomous agents, local test harnesses, and model evals) on Ubuntu.
+A modular, robust, and security-hardened workstation repository designed for **AI Automation Engineers** and **AI Engineers** (developers running autonomous agents, local test harnesses, and model evals) on Ubuntu and macOS.
 
-Includes automated package bootstrapping, supply chain quarantine, credential isolation, git worktree isolation for concurrent agents, task queue supervision, and full Docker container verification.
+Powered by a high-performance, sub-millisecond Rust multi-call engine (`workstation`) with transparent POSIX Bash fallback shims, automated package bootstrapping, supply chain quarantine, credential isolation, git worktree isolation for concurrent agents, task queue supervision, and zero-mock empirical testing suites.
 
 > 📚 **Complete Documentation Suite:**
 > - 📖 **[The AI Automation Engineer's Field Manual](docs/MANUAL.md)**: Deep architectural guide explaining agent runtime layers, threat models, supply chain defense, and systems engineering for autonomous agents.
