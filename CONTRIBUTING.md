@@ -23,7 +23,7 @@ Before contributing, keep these four core architectural rules in mind:
 
 ## 🧪 Testing & Verification Suite
 
-All modifications must pass the complete 16-stage container verification test suite before being merged:
+All modifications must pass the complete 17-stage container verification test suite before being merged:
 
 ```bash
 # Execute the full verification suite in an isolated Ubuntu 24.04 container
@@ -43,6 +43,20 @@ for f in install.sh update.sh bin/* scripts/* tests/*.sh config/bash/aliases.d/*
   bash -n "$f"
 done
 ```
+
+### Updating Pinned Binaries & Cryptographic Checksums
+All external binaries installed outside distribution package managers (such as `uv` and `pueue`) must strictly enforce exact version pinning and SHA256 cryptographic verification for both `x86_64` and `aarch64` architectures. Unverified `curl | sh` execution pipelines are forbidden.
+
+* **Audit current pinned checksums**:
+  ```bash
+  ./scripts/update-checksums.sh --check
+  ```
+* **Bump or compute upstream checksums for new versions**:
+  ```bash
+  ./scripts/update-checksums.sh --uv-version 0.6.5 --pueue-version v4.0.4
+  ```
+* Update `UV_VER`, `PUEUE_VER`, and the corresponding SHA256 hash tables in [`scripts/packages.sh`](scripts/packages.sh).
+* Run `./tests/run_tests.sh` to confirm the container suite verifies the new binaries.
 
 ---
 

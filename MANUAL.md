@@ -235,7 +235,7 @@ secret-run --env-file ~/.secrets/production.env -- pytest tests/
 
 > [!IMPORTANT]
 > **Deterministic Fail-Closed Security:**  
-> `secret-run` strictly enforces a fail-closed policy. Secret files must have `0600` or `0400` permissions (owner read/write only) and be owned by the executing user; loose permissions (`0644`, `0777`) abort execution immediately. Furthermore, `secret-run` parses secrets via a safe, tokenized Key-Value parser that rejects command substitutions (`$()`, backticks), protecting against arbitrary code execution from malicious `.env` files.
+> `secret-run` strictly enforces a fail-closed policy. Secret files must have `0600` or `0400` permissions (owner read/write only) and be owned by the executing user; loose permissions (`0644`, `0777`) abort execution immediately. Furthermore, `secret-run` parses secrets via a safe, tokenized Key-Value parser that rejects command substitutions (`$()`, backticks) and bash functions, supports optional `export ` prefixes, strictly fails closed on unclosed quotes (`KEY="val`), and cleanly handles empty assignments (`KEY=`).
 
 > [!TIP]
 > **Directory-Scoped Secrets with `direnv`:**  
