@@ -24,6 +24,7 @@ To avoid confusion, here is how the documentation in this repository is structur
 1. [Prologue: The Shift to Agentic AI Engineering](#1-prologue-the-shift-to-agentic-ai-engineering)
 2. [Demystifying the "Harness": The Three-Layer Stack](#2-demystifying-the-harness-the-three-layer-stack)
 3. [The Threat Model: Why Raw Linux Kills AI Workflows](#3-the-threat-model-why-raw-linux-kills-ai-workflows)
+   - [3.1 Operational Boundaries, Guarantees & Non-Goals](#31-operational-boundaries-guarantees--non-goals)
 4. [Deep Architectural Breakdown of the Substrate](#4-deep-architectural-breakdown-of-the-substrate)
    - [Pillar 1: Zero-Ambient Credential Isolation (`secret-run`)](#pillar-1-zero-ambient-credential-isolation-secret-run)
    - [Pillar 2: AI Supply Chain Defense & Package Quarantine](#pillar-2-ai-supply-chain-defense--package-quarantine)
@@ -158,6 +159,23 @@ Let's look at the actual **threat vectors** when running autonomous agents on an
 ```
 
 This workstation repo was architected specifically to eliminate every single one of these failure modes through deterministic systems engineering.
+
+### 3.1 Operational Boundaries, Guarantees & Non-Goals
+
+To maintain rigorous security engineering, it is critical to state clearly what this workstation substrate **guarantees**, and what is explicitly an **operational non-goal**:
+
+| Dimension | What This Workstation Guarantees | Operational Non-Goal (Out of Scope) |
+| :--- | :--- | :--- |
+| **Target User & Persona** | Hardened, zero-ambient-secret execution substrate for an **individual AI automation engineer** on their workstation or dedicated cloud dev pod. | Multi-tenant shared OS environment hosting adversarial, untrusted third-party users side-by-side. |
+| **Credential Safety** | Secrets exist strictly in temporary child process subshells (`secret-run`). Ambient shell profiles (`~/.bashrc`) and LLM context tools are shielded from plaintext tokens. | Kernel-level memory zeroing against physical hardware attackers with root debugger access to the host machine. |
+| **Agent Circuit Breakers** | Cooperative supervisor guardrails (`agent-guard-check`, `agent-stop`) that immediately halt task queues (`jagent`) and loop scripts to prevent runaway API spend and token exhaustion. | Hypervisor-level unbypassable sandbox or kernel seccomp jail against arbitrary native compiled binaries executing outside the shell harness. |
+| **Supply Chain Defense** | Pinned releases with SHA256 cryptographic verification for bootstrapped binaries (`uv`, `pueue`), zero unverified `curl \| sh`, 7-day PyPI quarantine, and npm script execution disabled. | Air-gapped offline package mirror or custom internal artifact repository. |
+| **MCP Scope Boundary** | Model Context Protocol filesystem scope is bounded to `~/Development`, isolating private dotfiles (`~/.ssh`, `~/.aws`, `~/.gnupg`) from agent tools. | Restricting the engineer from editing their own repositories in `~/Development`. |
+| **Test Image (`tests/Dockerfile`)** | Ephemeral, automated testing and local developer exploration sandbox (`sandbox.sh`) simulating standard Ubuntu workstation permissions with sudo. | Hardened multi-tenant production container runtime or Kubernetes pod security standard. |
+
+> [!TIP]
+> **Running Agents on Untrusted Repositories:**  
+> When running automated agent harnesses on cloned third-party or untrusted codebases, invoke `secret-run --strict` (or set `export SECRET_RUN_STRICT=1`). This disables auto-discovery of ambient `.env` files in the current working directory, ensuring secrets are only sourced from your private vault (`~/.secrets/ai.env`) or explicit `--env-file` flags.
 
 ---
 

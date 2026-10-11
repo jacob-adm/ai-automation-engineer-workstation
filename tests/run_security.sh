@@ -174,6 +174,25 @@ else
 fi
 rm -f "$TMP_EMPTY"
 
+# 3.7 Strict mode / ambient .env auto-discovery suppression
+TMP_STRICT_DIR="$(mktemp -d /tmp/strict_test_XXXXXX)"
+cat << 'EOF' > "$TMP_STRICT_DIR/.env"
+LOCAL_SECRET=ambient_token
+EOF
+chmod 600 "$TMP_STRICT_DIR/.env"
+
+strict_out="$(cd "$TMP_STRICT_DIR" && "$SECRET_RUN" --strict -- bash -c 'echo "${LOCAL_SECRET:-BLOCKED}"')"
+env_strict_out="$(cd "$TMP_STRICT_DIR" && SECRET_RUN_STRICT=1 "$SECRET_RUN" -- bash -c 'echo "${LOCAL_SECRET:-BLOCKED}"')"
+explicit_out="$(cd "$TMP_STRICT_DIR" && "$SECRET_RUN" --strict --env-file .env -- bash -c 'echo "$LOCAL_SECRET"')"
+
+rm -rf "$TMP_STRICT_DIR"
+
+if [ "$strict_out" = "BLOCKED" ] && [ "$env_strict_out" = "BLOCKED" ] && [ "$explicit_out" = "ambient_token" ]; then
+    pass "secret-run strict mode: --strict and SECRET_RUN_STRICT=1 block ambient .env auto-discovery"
+else
+    fail "secret-run strict mode failed to block ambient .env auto-discovery"
+fi
+
 header "4. Model Context Protocol (MCP) Boundary Verification"
 
 TARGET_MCP="$HOME/.config/mcp/mcp.json"

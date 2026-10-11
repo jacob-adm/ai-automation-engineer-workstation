@@ -1,3 +1,9 @@
+# tests/Dockerfile: Ephemeral test and developer exploration sandbox for AI Automation Engineer Workstation
+# NOTE: This image is strictly intended for automated CI verification (tests/verify_container.sh)
+# and local developer interactive sandboxing (tests/sandbox.sh). It simulates a standard single-user
+# Ubuntu 24.04 workstation or cloud VM (e.g. AWS EC2 'ubuntu' with sudo) to test apt installations.
+# It does NOT mount the host Docker socket (/var/run/docker.sock) and is NOT intended as a hardened production container runtime.
+
 FROM ubuntu:24.04
 
 # Avoid interactive prompts during base image setup
