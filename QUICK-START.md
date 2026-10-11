@@ -51,7 +51,7 @@ cd ~/ai-automation-engineer-workstation
 # 3. Reload your shell
 source ~/.bashrc
 ```
-*(This installs native packages, sets up `uv` and `pueue`, safely backs up any existing dotfiles to `~/.dotfiles_backup/`, and symlinks all 26 configurations into your home directory).*
+*(This installs native packages, sets up `uv` and `pueue`, safely backs up any existing dotfiles to `~/.dotfiles_backup/`, and symlinks all 31 configurations and tools into your home directory).*
 
 ---
 
@@ -63,7 +63,7 @@ Open your terminal and type:
 ```bash
 doctor
 ```
-You should see a glorious wall of green checkmarks (`✓`) verifying all 45 tools, symlinks, and agent rules.
+You should see a glorious wall of green checkmarks (`✓`) verifying all 48 tools, symlinks, and agent rules.
 
 ### Mission 2: Set Up Your Secret Vault (~/.secrets/ai.env) with `secret-run`
 In AI engineering, we **never** store API keys in `.bashrc` or git repositories where untrusted scripts or subagents can leak them. Instead, you keep them in a locked private vault at `~/.secrets/ai.env`. Let's create your vault right now:
@@ -88,6 +88,10 @@ secret-run --env-file ~/.secrets/ai.env -- bash -c 'echo "Inside the vault, my k
 echo "Outside the vault, my key is: '$GEMINI_API_KEY'"
 ```
 Notice how outside the vault, it prints nothing! The key was loaded strictly for the test command and instantly vanished. Your regular shell stays 100% clean and protected from accidental leaks.
+
+> [!TIP]
+> **Running on Untrusted Repositories:**  
+> If an agent is working in a cloned third-party repo, use `secret-run --strict -- <command>` (or `export SECRET_RUN_STRICT=1`). This blocks ambient `.env` files in the current folder from being loaded and guarantees tokens are only sourced from your locked vault.
 
 ### Mission 3: Give an AI Agent Its Own Lego Table (Git worktree / agent-worktree)
 Let's see how fast you can spin up an isolated workspace:
@@ -340,7 +344,7 @@ python3 -m http.server 8000
 ```
 - **Scenario A (Local Mac/Ubuntu Desktop)**: Open your browser to 👉 **`http://localhost:8000`**.
 - **Scenario B (VS Code Remote / Dev Containers)**: Click the *"Open in Browser"* popup in the bottom right corner of VS Code.
-- **Scenario C (Docker Sandbox)**: Start the sandbox with port forwarding: `docker run --rm -it -p 8000:8000 dotfiles-sandbox /bin/bash -l`.
+- **Scenario C (Docker Sandbox)**: Start the sandbox with port forwarding: `docker run --rm -it -p 8000:8000 ai-automation-engineer-workstation-sandbox /bin/bash -l`.
 - **Scenario D (Cloud GPU Box)**: Forward port from your laptop: `ssh -L 8000:localhost:8000 user@cloud-ip`.
 
 Once verified, merge the agent's work back into your main branch:
@@ -534,7 +538,7 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 
 ### 6. 🩺 The Robot Medic (`doctor` & `doctor --fix`)
 * **The Problem**: **The Spilled Coffee Principle**—What happens if you spill coffee on your laptop, or you accidentally delete half your configuration files? 
-* **The Solution**: You shouldn't spend 3 days crying and re-installing things. You run [`doctor`](bin/doctor). It runs 45 medical tests (system and symlink verifications) on your system in 2 seconds. If anything is broken, [`doctor --fix`](bin/doctor) heals (self-repairs) it automatically.
+* **The Solution**: You shouldn't spend 3 days crying and re-installing things. You run [`doctor`](bin/doctor). It runs 48 medical tests (system and symlink verifications) on your system in 2 seconds. If anything is broken, [`doctor --fix`](bin/doctor) heals (self-repairs) it automatically.
 * **How to use it**:
   ```bash
   doctor         # Check system health (diagnostic runner)
@@ -559,6 +563,8 @@ Here are the most useful everyday commands organized by what you're trying to do
 ### 🤖 AI Agent & Worktree Spells (Commands & Aliases)
 | Command | What it does (in plain English) |
 | :--- | :--- |
+| `secret-run -- <cmd>` | Run command with credentials loaded strictly into a temporary subshell |
+| `secret-run --strict -- <cmd>` | Run in strict mode (blocks ambient `.env` loading in untrusted repos) |
 | `aw-new <name>` | Spin up an isolated `.worktrees/<name>` room (Git worktree) for an agent |
 | `aw-ls` | List all active agent rooms (Git worktrees) and what branch they are on |
 | `aw-merge <name>` | Merge the agent's work back into your branch and clean up |
@@ -580,14 +586,16 @@ Here are the most useful everyday commands organized by what you're trying to do
 ### 💻 System & Navigation Spells (Shell Aliases & Functions)
 | Command | What it does |
 | :--- | :--- |
-| `doctor` | Run full 45-point health check |
+| `doctor` | Run full 48-point health check |
 | `doctor --fix` | Self-heal broken links and recover configuration |
 | `dotfiles-update` | Pull latest updates, refresh symlinks, and self-heal |
+| `sysinfo` | Display hardware, OS, kernel, uptime, and memory overview |
+| `gha-failed-logs` | Fetch and display failed CI/CD pipeline step logs in terminal |
 | `edocker` | Verify or start Docker daemon if it went to sleep |
 | `gpu` | Watch your GPU memory and temperatures live (1-sec refresh) |
 | `ports` | See all network ports currently open on your machine |
-| `pr-checkout <id>` | Checkout a GitHub Pull Request locally |
-| `pr-checkout --worktree <id>` | Put a Pull Request in a separate worktree to review it safely |
+| `pr-checkout <id\|branch>` | Checkout a GitHub or Bitbucket PR/branch locally |
+| `pr-checkout --worktree <id\|branch>` | Put a PR or remote branch in a separate worktree to review it safely |
 | `..` / `...` / `....` | Jump up 1, 2, or 3 folder levels |
 | `mkcd <dir>` | Make a folder and immediately `cd` into it |
 | `extract <archive>` | Automatically uncompress `.tar.gz`, `.zip`, `.7z`, etc. |
@@ -686,9 +694,9 @@ Here are the 3 best ways:
    ```
 3. **Convert directly to PowerPoint (`.pptx`)**:
    ```bash
-   npx @marp-team/marp-cli presentation.md --pptx -o presentation.pptx
+   npx -y @marp-team/marp-cli presentation.md --pptx -o presentation.pptx
    ```
-   *(Or make a clickable web slide deck: `npx @marp-team/marp-cli presentation.md -o presentation.html`)*.
+   *(Or make a clickable web slide deck: `npx -y @marp-team/marp-cli presentation.md -o presentation.html`)*.
 
 ---
 
