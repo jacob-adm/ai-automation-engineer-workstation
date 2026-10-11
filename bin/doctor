@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# bin/doctor: Self-healing health check and diagnostic tool ("The Spilled Coffee Principle")
+# ==============================================================================
+# File:        bin/doctor
+# Component:   Environment Self-Healing Diagnostic Engine
+# Description: Asserts workstation configuration integrity across 48 health checks.
+# Invariants:  - "The Spilled Coffee Principle": Any drifted state is detected and reported.
+#              - In fix mode (--fix), triggers automated self-healing for broken symlinks and permissions.
+#              - Returns exit code 1 if any non-optional check fails.
+# Dependencies: bash (>= 4.0), coreutils, git, stat, jq
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Styling & Logging Helpers
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -10,7 +22,10 @@ RED="\033[0;31m"
 CYAN="\033[0;36m"
 RESET="\033[0m"
 
-# Resolve physical path to this script even if executed via symlink
+# ------------------------------------------------------------------------------
+# Section 2: Canonical Path Resolution
+# ------------------------------------------------------------------------------
+# Invariant: Must resolve true physical directory when executed through a symlink in ~/.local/bin/
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SCRIPT_SOURCE" ]; do
     SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd)"
@@ -20,11 +35,15 @@ done
 SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd)"
 DOTFILES_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+# ------------------------------------------------------------------------------
+# Section 3: Execution Mode & Pre-flight Auto-Remediation
+# ------------------------------------------------------------------------------
 FIX_MODE=0
 if [ "${1:-}" = "--fix" ] || [ "${1:-}" = "-f" ]; then
     FIX_MODE=1
 fi
 
+# Pre-flight repair: When fix mode is enabled, refresh symlinks before validation
 if [ "$FIX_MODE" -eq 1 ]; then
     "${DOTFILES_ROOT}/scripts/links.sh" >/dev/null 2>&1 || true
 fi
@@ -60,7 +79,9 @@ echo -e "${BOLD}${CYAN}=====================================================${RE
 echo -e "${BOLD}${CYAN}        ENVIRONMENT HEALTH CHECK (DOCTOR)            ${RESET}"
 echo -e "${BOLD}${CYAN}=====================================================${RESET}"
 
-# 1. Symlinks Check
+# ------------------------------------------------------------------------------
+# Section 4: Dotfile & CLI Symlink Verification (31 Canonical Links)
+# ------------------------------------------------------------------------------
 header "Checking Dotfile Symlinks"
 EXPECTED_LINKS=(
     "$HOME/.bashrc"
@@ -106,7 +127,9 @@ for target in "${EXPECTED_LINKS[@]}"; do
     fi
 done
 
-# 2. Tooling Check
+# ------------------------------------------------------------------------------
+# Section 5: Core CLI & AI Developer Package Verification
+# ------------------------------------------------------------------------------
 header "Checking Core & AI Tooling"
 TOOLS=(
     "git:Git version control"
@@ -132,7 +155,7 @@ for item in "${TOOLS[@]}"; do
     fi
 done
 
-# Check bat and fd fallbacks
+# Debian / Ubuntu package binary naming aliases (batcat vs bat, fdfind vs fd)
 if command -v batcat >/dev/null 2>&1 || command -v bat >/dev/null 2>&1; then
     pass "bat/batcat (Syntax-highlighted cat)"
 else
@@ -145,7 +168,9 @@ else
     fail "Missing command: fd/fdfind"
 fi
 
-# 3. Docker Service Check
+# ------------------------------------------------------------------------------
+# Section 6: Docker Daemon Connectivity & Socket Access
+# ------------------------------------------------------------------------------
 header "Checking Docker Daemon"
 if command -v docker >/dev/null 2>&1; then
     if docker info >/dev/null 2>&1; then
@@ -165,7 +190,9 @@ else
     warn "Docker CLI is not installed"
 fi
 
-# 4. Git Identity Check
+# ------------------------------------------------------------------------------
+# Section 7: Git Identity Configuration
+# ------------------------------------------------------------------------------
 header "Checking Git Identity"
 git_user=$(git config --global user.name 2>/dev/null || echo "")
 git_email=$(git config --global user.email 2>/dev/null || echo "")
@@ -176,7 +203,9 @@ else
     warn "Git identity incomplete. Set via: git config --global user.name ... and user.email ..."
 fi
 
-# 5. Agent Guardrails Check
+# ------------------------------------------------------------------------------
+# Section 8: Autonomous Agent Circuit Breaker & Guardrails
+# ------------------------------------------------------------------------------
 header "Checking AI Agent Circuit Breaker"
 if [ -f "$HOME/.agent_stop" ]; then
     warn "Circuit breaker is ENGAGED (~/.agent_stop exists). Clear with 'agent-resume'."
@@ -184,7 +213,9 @@ else
     pass "Circuit breaker is clear / ready (all automated agent loops permitted)"
 fi
 
-# 6. Modular Aliases Check
+# ------------------------------------------------------------------------------
+# Section 9: Modular Shell Aliases (~/.bash_aliases.d)
+# ------------------------------------------------------------------------------
 header "Checking Modular Shell Aliases (~/.bash_aliases.d)"
 if [ -d "$HOME/.bash_aliases.d" ]; then
     pass "~/.bash_aliases.d directory exists ($(find "$HOME/.bash_aliases.d" -name "*.sh" | wc -l | tr -d ' ') modules)"
@@ -192,7 +223,9 @@ else
     fail "~/.bash_aliases.d directory missing"
 fi
 
-# 7. AI Coding Agents Check
+# ------------------------------------------------------------------------------
+# Section 10: AI Coding Agent Setup & Context Boundaries
+# ------------------------------------------------------------------------------
 header "Checking AI Coding Agent Setup (Claude Code & OpenCode)"
 if [ -L "$HOME/.claude/CLAUDE.md" ] && [ -L "$HOME/.claude/settings.json" ]; then
     pass "Claude Code unified instructions and settings verified (~/.claude)"
@@ -206,8 +239,11 @@ else
     fail "OpenCode configuration missing or broken"
 fi
 
-# 8. Security & Supply Chain Invariants Check
+# ------------------------------------------------------------------------------
+# Section 11: Security & Supply Chain Invariants
+# ------------------------------------------------------------------------------
 header "Checking Security & Supply Chain Invariants"
+# Invariant: Model Context Protocol (MCP) filesystem server must not mount bare '.'
 if [ -f "$HOME/.config/mcp/mcp.json" ]; then
     if jq -e '.mcpServers.filesystem.args[] | select(. == ".")' "$HOME/.config/mcp/mcp.json" >/dev/null 2>&1; then
         warn "MCP filesystem server config exposes bare '.' directory"
@@ -216,6 +252,7 @@ if [ -f "$HOME/.config/mcp/mcp.json" ]; then
     fi
 fi
 
+# Invariant: Secret files must strictly possess 0600 or 0400 permissions
 if [ -f "$HOME/.secrets/ai.env" ]; then
     secret_perms=$(stat -c "%a" "$HOME/.secrets/ai.env" 2>/dev/null || stat -f "%OLp" "$HOME/.secrets/ai.env" 2>/dev/null || echo "")
     if [[ "$secret_perms" =~ ^0?[46]00$ ]]; then
@@ -232,11 +269,14 @@ else
     pass "No default secret file in ~/.secrets/ai.env (clean environment)"
 fi
 
+# Invariant: Binary checksum updater tool must exist and be executable
 if [ -x "${DOTFILES_ROOT}/scripts/update-checksums.sh" ]; then
     pass "Binary checksum verification tool operational (scripts/update-checksums.sh)"
 fi
 
-# Summary
+# ------------------------------------------------------------------------------
+# Section 12: Diagnostic Summary & Exit Control
+# ------------------------------------------------------------------------------
 echo -e "\n${BOLD}${CYAN}=====================================================${RESET}"
 echo -e "Doctor Summary: ${BOLD}${GREEN}$PASSED_CHECKS Passed${RESET}, ${BOLD}${YELLOW}$WARNING_CHECKS Warnings${RESET}, ${BOLD}${RED}$FAILED_CHECKS Failed${RESET} (out of $TOTAL_CHECKS checks)"
 echo -e "${BOLD}${CYAN}=====================================================${RESET}"

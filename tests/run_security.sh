@@ -1,12 +1,28 @@
 #!/usr/bin/env bash
-# tests/run_security.sh: Standalone modular security & supply chain test suite
-# Verifies zero ambient secrets, fail-closed isolation, supply chain pinning, and circuit breakers
+# ==============================================================================
+# File:        tests/run_security.sh
+# Component:   Workstation Security & Supply Chain Regression Suite
+# Description: Executes an automated 7-stage security audit testing supply chain
+#              checksum pinning, secret isolation, AST parser edge-cases, MCP
+#              filesystem bounds, installer dry-run, and circuit breaker halts.
+# Invariants:  - Zero ambient secret leaks tolerated in parent shell environments.
+#              - Fail-closed verification: malformed permissions (non-0600) or AST
+#                injection vectors must be rejected without code execution.
+# Dependencies: bash, curl, jq, git, stat, mktemp
+# Target OS:   Ubuntu 22.04+ / Debian 12+ / macOS (POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# 1. Environment & Path Resolution
+# ------------------------------------------------------------------------------
 DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 export PATH="${DOTFILES_ROOT}/bin:$HOME/.local/bin:$PATH"
 
+# ------------------------------------------------------------------------------
+# 2. Terminal Formatting & Reporters
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"

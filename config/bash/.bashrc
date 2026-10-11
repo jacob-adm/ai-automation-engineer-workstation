@@ -1,39 +1,59 @@
-# ~/.bashrc: executed by bash(1) for non-login interactive shells.
+# ==============================================================================
+# File:        config/bash/.bashrc
+# Component:   Interactive Shell Substrate & Development Environment
+# Description: Configures interactive Bash sessions for AI automation engineers,
+#              incorporating supply-chain defense, temporary RAM filesystems,
+#              task queue orchestration (pueue), and Git-aware prompt telemetry.
+# Invariants:  - Non-interactive shells return immediately to prevent subshell side-effects.
+#              - PyPI packages quarantined by 7-day exclusion date via UV_EXCLUDE_NEWER.
+#              - Temporary files mapped to Linux RAM-backed tmpfs (/run/user/$UID).
+# Dependencies: bash 4+, git (optional), uv (optional), pueue (optional)
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (POSIX Bash fallback)
+# ==============================================================================
 
-# If not running interactively, don't do anything
+# ------------------------------------------------------------------------------
+# 1. Interactive Shell Guard
+# ------------------------------------------------------------------------------
+# Abort processing immediately if invoked by non-interactive subshells or scripts
 case $- in
     *i*) ;;
       *) return;;
 esac
 
-# -----------------------------------------------------------------------------
-# Shell Options & History
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 2. Shell Options & Command History
+# ------------------------------------------------------------------------------
+# Append history entries rather than overwriting on terminal exit
 shopt -s histappend
+
+# Recalculate terminal geometry on window resize
 shopt -s checkwinsize
+
+# Enable recursive globbing (**/*) and minor spelling correction
 shopt -s globstar 2>/dev/null
 shopt -s cdspell 2>/dev/null
 shopt -s cmdhist 2>/dev/null
 
+# Deduplicate adjacent commands and erase duplicate history entries across sessions
 HISTCONTROL=ignoreboth:erasedups
 HISTSIZE=50000
 HISTFILESIZE=100000
 HISTTIMEFORMAT="%F %T "
 
-# -----------------------------------------------------------------------------
-# Environment & Paths
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 3. Environment & Paths
+# ------------------------------------------------------------------------------
 export EDITOR="vim"
 export VISUAL="vim"
 export PAGER="less"
 export LESS="-R -i -M"
 
-# Linux tmpfs optimization: use RAM-backed filesystem for scratch data & agent runs
+# Linux tmpfs optimization: map scratch directories to RAM filesystem for speed & flash preservation
 if [ -d "/run/user/$(id -u)" ]; then
     export TMPDIR="/run/user/$(id -u)"
 fi
 
-# Prepend user bin directories if present
+# Prepend user bin directories to PATH without introducing duplicate entries
 for dir in "$HOME/bin" "$HOME/.local/bin" "$HOME/.dotfiles/bin"; do
     if [ -d "$dir" ] && [[ ":$PATH:" != *":$dir:"* ]]; then
         PATH="$dir:$PATH"
@@ -41,19 +61,22 @@ for dir in "$HOME/bin" "$HOME/.local/bin" "$HOME/.dotfiles/bin"; do
 done
 export PATH
 
-# -----------------------------------------------------------------------------
-# Supply Chain Defense for Python & AI Tooling
-# -----------------------------------------------------------------------------
-# 7-day release quarantine: prevent pulling zero-day compromised PyPI packages
+# ------------------------------------------------------------------------------
+# 4. Supply Chain Defense for Python & AI Tooling
+# ------------------------------------------------------------------------------
+# 7-day release quarantine: prevent automatic pulls of freshly published/compromised PyPI packages
 UV_QUARANTINE_DATE="$(date -u -d "7 days ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -v-7d +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || true)"
 if [ -n "$UV_QUARANTINE_DATE" ]; then
     export UV_EXCLUDE_NEWER="$UV_QUARANTINE_DATE"
 fi
+
+# Enable OSV vulnerability and malicious package database checks during resolution
 export UV_MALWARE_CHECK=1
 
-# -----------------------------------------------------------------------------
-# Python Virtualenv Automatic Helper
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 5. Python Virtual Environment Automatic Helper
+# ------------------------------------------------------------------------------
+# Contextually activates virtualenv from current directory or Git repository root
 activate_venv() {
     if [ -f ".venv/bin/activate" ]; then
         # shellcheck disable=SC1091
@@ -72,13 +95,15 @@ activate_venv() {
     fi
 }
 
-# -----------------------------------------------------------------------------
-# Colors & Prompt
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 6. Colors & Prompt Telemetry
+# ------------------------------------------------------------------------------
+# Initialize color database if dircolors utility is installed
 if [ -x /usr/bin/dircolors ]; then
     test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
 fi
 
+# Extract short branch name and dirty indicator (* flag)
 parse_git_branch() {
     local branch
     branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
@@ -93,6 +118,7 @@ parse_git_branch() {
     fi
 }
 
+# Construct two-line prompt showing user/host (red for root), cwd, git state, and non-zero exit status
 prompt_command() {
     local exit_code=$?
     local exit_str=""
@@ -112,9 +138,10 @@ prompt_command() {
 }
 PROMPT_COMMAND=prompt_command
 
-# -----------------------------------------------------------------------------
-# Bash Completion & CLI Integrations
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 7. Bash Completion & Modern CLI Integrations
+# ------------------------------------------------------------------------------
+# System-wide programmable completion
 if ! shopt -oq posix; then
     if [ -f /usr/share/bash-completion/bash_completion ]; then
         . /usr/share/bash-completion/bash_completion
@@ -123,40 +150,42 @@ if ! shopt -oq posix; then
     fi
 fi
 
-# Direnv integration for scoped credentials
+# Direnv integration for scoped environment variables and directory credential boundaries
 if command -v direnv >/dev/null 2>&1; then
     eval "$(direnv hook bash)"
 fi
 
-# Zoxide smart navigation
+# Zoxide smart directory jumping
 if command -v zoxide >/dev/null 2>&1; then
     eval "$(zoxide init bash)"
 fi
 
-# Pueue daemon auto-start for experiment and harness task queues
+# Pueue daemon auto-start for background task and agent harness queuing
 if command -v pueued >/dev/null 2>&1; then
     if ! pueue status >/dev/null 2>&1; then
         pueued --daemonize >/dev/null 2>&1 || true
     fi
+    # Configure dedicated parallel execution pools
     pueue group add experiments 2>/dev/null && pueue parallel 2 -g experiments 2>/dev/null || true
     pueue group add agents 2>/dev/null && pueue parallel 4 -g agents 2>/dev/null || true
 fi
 
-# -----------------------------------------------------------------------------
-# Aliases & External Configurations
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+# 8. Aliases & External Configurations
+# ------------------------------------------------------------------------------
+# Ingest root alias loader
 if [ -f "$HOME/.bash_aliases" ]; then
     . "$HOME/.bash_aliases"
 fi
 
-# AI Agent Automation policy & circuit breaker
+# Ingest AI Agent automation circuit breaker and rate limiting engine
 if [ -f "$HOME/.ai_automation.sh" ]; then
     . "$HOME/.ai_automation.sh"
 elif [ -f "$HOME/.dotfiles/config/ai_automation/ai_automation.sh" ]; then
     . "$HOME/.dotfiles/config/ai_automation/ai_automation.sh"
 fi
 
-# Local machine-specific overrides
+# Ingest local machine overrides without modifying dotfiles repository
 if [ -f "$HOME/.dotfiles.local" ]; then
     . "$HOME/.dotfiles.local"
 fi

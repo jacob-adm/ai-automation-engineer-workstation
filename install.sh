@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
-# install.sh: Baseline installer & bootstrapper for AI Automation Engineer Workstation
+# ==============================================================================
+# File:        install.sh
+# Component:   Workstation Bootstrapper & Lifecycle Orchestrator
+# Description: Idempotent baseline installer provisioning system packages,
+#              AI developer dependencies, Pueue task queue, and dotfile symlinks.
+# Invariants:  - Refuses bare root execution without --force-root or --profile cloud
+#                to avoid polluting /root instead of user home.
+#              - Strictly idempotent: repeated runs cause zero configuration loss.
+#              - Creates timestamped backups (~/.dotfiles_backup/) before overwriting.
+#              - Dry-run (-n / --dry-run) guarantees zero filesystem mutations.
+# Dependencies: bash (>= 4.0), coreutils
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Linux)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Physical Path Resolution & Terminal Palette
+# ------------------------------------------------------------------------------
 DOTFILES_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ANSI Colors
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
 BLUE="\033[0;34m"
 CYAN="\033[0;36m"
+RED="\033[0;31m"
 RESET="\033[0m"
 
 print_banner() {
@@ -21,6 +36,9 @@ print_banner() {
 EOF
 }
 
+# ------------------------------------------------------------------------------
+# Section 2: Usage Documentation & Option Definitions
+# ------------------------------------------------------------------------------
 usage() {
     echo -e "${BOLD}Usage:${RESET} $0 [options]"
     echo ""
@@ -37,6 +55,7 @@ usage() {
     echo ""
 }
 
+# Default operational flags
 ASSUME_YES=0
 SKIP_PACKAGES=0
 ONLY_PACKAGES=0
@@ -46,6 +65,9 @@ FORCE_ROOT=0
 PROFILE="full"
 TARGET_DIR="${HOME}"
 
+# ------------------------------------------------------------------------------
+# Section 3: CLI Argument Parsing
+# ------------------------------------------------------------------------------
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -y|--yes)
@@ -94,13 +116,19 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Profile override: Minimal profile deliberately skips root-level apt operations
 if [ "$PROFILE" = "minimal" ]; then
     SKIP_PACKAGES=1
 fi
 
 print_banner
 
-# Root execution safety check
+# ------------------------------------------------------------------------------
+# Section 4: Root Execution Safety Guard
+# ------------------------------------------------------------------------------
+# Fail-closed guard: Running dotfile installation as root (EUID=0) targets /root,
+# which breaks non-root developer environments unless specifically targeting a
+# containerized cloud GPU pod (RunPod, Lambda Labs) or explicitly overridden.
 if [ "$EUID" -eq 0 ] && [ "$PROFILE" != "cloud" ] && [ "$FORCE_ROOT" -eq 0 ]; then
     if [ "$ASSUME_YES" -eq 1 ]; then
         echo -e "${RED}[ERROR]${RESET} Refusing to run as root without --force-root (would install dotfiles into /root)."
@@ -119,6 +147,9 @@ if [ "$EUID" -eq 0 ] && [ "$PROFILE" != "cloud" ] && [ "$FORCE_ROOT" -eq 0 ]; th
     fi
 fi
 
+# ------------------------------------------------------------------------------
+# Section 5: Interactive Confirmation & Pre-flight Sanitization
+# ------------------------------------------------------------------------------
 if [ "$ASSUME_YES" -eq 0 ] && [ "$DRY_RUN" -eq 0 ]; then
     echo -e "Bootstrapping system for profile: ${BOLD}${CYAN}${PROFILE}${RESET}"
     echo -e "Target directory: ${BOLD}${TARGET_DIR}${RESET}"
@@ -133,7 +164,7 @@ if [ "$ASSUME_YES" -eq 0 ] && [ "$DRY_RUN" -eq 0 ]; then
     esac
 fi
 
-# Ensure all helper scripts and custom binaries are executable
+# Ensure executable permissions across all helper subroutines
 if [ "$DRY_RUN" -eq 0 ]; then
     chmod +x "${DOTFILES_ROOT}/scripts/packages.sh"
     chmod +x "${DOTFILES_ROOT}/scripts/links.sh"
@@ -142,7 +173,9 @@ if [ "$DRY_RUN" -eq 0 ]; then
     fi
 fi
 
-# Handle dry-run preview mode
+# ------------------------------------------------------------------------------
+# Section 6: Dry-Run Simulation Pipeline
+# ------------------------------------------------------------------------------
 if [ "$DRY_RUN" -eq 1 ]; then
     echo ""
     echo -e "${BLUE}==>${RESET} ${BOLD}[DRY-RUN] Previewing dotfile symlinks and backups (target: ${TARGET_DIR})...${RESET}"
@@ -154,7 +187,9 @@ if [ "$DRY_RUN" -eq 1 ]; then
     exit 0
 fi
 
-# Step 1: Install packages
+# ------------------------------------------------------------------------------
+# Section 7: Step 1 - System & Package Bootstrapping
+# ------------------------------------------------------------------------------
 if [ "$SKIP_PACKAGES" -eq 0 ]; then
     echo ""
     echo -e "${BLUE}==>${RESET} ${BOLD}Step 1: Installing system packages (profile: ${PROFILE})...${RESET}"
@@ -164,7 +199,9 @@ else
     echo -e "${YELLOW}==>${RESET} Skipping system package installation."
 fi
 
-# Step 2: Link dotfiles
+# ------------------------------------------------------------------------------
+# Section 8: Step 2 - Declarative Symlink Deployment
+# ------------------------------------------------------------------------------
 if [ "$SKIP_LINKS" -eq 0 ]; then
     echo ""
     echo -e "${BLUE}==>${RESET} ${BOLD}Step 2: Linking dotfiles and AI automation tools...${RESET}"
@@ -174,7 +211,9 @@ else
     echo -e "${YELLOW}==>${RESET} Skipping dotfile symlinks."
 fi
 
-# Summary
+# ------------------------------------------------------------------------------
+# Section 9: Post-Installation Verification & Next Steps
+# ------------------------------------------------------------------------------
 echo ""
 echo -e "${GREEN}=============================================================${RESET}"
 echo -e "${BOLD}${GREEN}               Setup Completed Successfully!                 ${RESET}"

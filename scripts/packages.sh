@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
-# scripts/packages.sh: Installs baseline and AI engineering packages on Ubuntu/Debian
+# ==============================================================================
+# File:        scripts/packages.sh
+# Component:   Package Bootstrapping & Binary Supply Chain Substrate
+# Description: Provisions distribution apt packages and installs cryptographic-pinned
+#              external binaries (uv, pueue) for x86_64 and aarch64 architectures.
+# Invariants:  - Zero unverified remote-to-shell pipelines: all external binaries are downloaded to
+#                temp space and asserted against pinned SHA256 hashes before installation.
+#              - Idempotent: checks command availability before initiating fetches.
+#              - Enforces non-interactive debconf selection to prevent installation hangs.
+# Dependencies: bash (>= 4.0), apt-get, curl, tar, sha256sum, coreutils
+# Target OS:   Ubuntu 22.04+ / Debian 12+
+# ==============================================================================
 
 set -euo pipefail
 
-# ANSI Colors
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Formatting & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -16,6 +29,9 @@ log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
 
+# ------------------------------------------------------------------------------
+# Section 2: Installation Profile Selection
+# ------------------------------------------------------------------------------
 PROFILE="full"
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -29,13 +45,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Check for Debian/Ubuntu
+# Invariant: Must run on Debian/Ubuntu platforms when invoking apt-get
 if [ ! -f /etc/debian_version ] && [ ! -f /etc/os-release ]; then
     log_warn "This system does not appear to be Debian or Ubuntu. Skipping apt package installation."
     exit 0
 fi
 
-# Detect privilege escalation command and enforce non-interactive environment across sudo
+# ------------------------------------------------------------------------------
+# Section 3: Privilege Escalation & Non-Interactive Frontend Configuration
+# ------------------------------------------------------------------------------
+# Force DEBIAN_FRONTEND=noninteractive across all sudo boundaries to avoid terminal blockages
 if [ "$EUID" -ne 0 ]; then
     if command -v sudo >/dev/null 2>&1; then
         SUDO="sudo DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC"
@@ -47,13 +66,16 @@ else
     SUDO="env DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC"
 fi
 
-# Pre-configure debconf for tzdata non-interactive mode
+# Pre-seed debconf to avoid interactive tzdata geography prompts
 if command -v debconf-set-selections >/dev/null 2>&1; then
     echo "tzdata tzdata/Areas select Etc" | $SUDO debconf-set-selections || true
     echo "tzdata tzdata/Zones/Etc select UTC" | $SUDO debconf-set-selections || true
 fi
 
-# Core baseline packages
+# ------------------------------------------------------------------------------
+# Section 4: Package Lists Definition
+# ------------------------------------------------------------------------------
+# Base developer utilities (compilers, archivers, terminal multiplexers, search)
 CORE_PACKAGES=(
     build-essential
     ca-certificates
@@ -73,7 +95,7 @@ CORE_PACKAGES=(
     fzf
 )
 
-# AI & Developer Automation packages
+# AI agent, virtual environment, and modern CLI enhancements
 AI_DEV_PACKAGES=(
     python3-venv
     python3-pip
@@ -83,7 +105,7 @@ AI_DEV_PACKAGES=(
     fd-find
 )
 
-# Cloud / GPU Pod packages (lean headless set)
+# Headless cloud GPU pod profile (RunPod, Lambda, Hetzner lean footprint)
 CLOUD_PACKAGES=(
     ca-certificates
     curl
@@ -100,6 +122,9 @@ CLOUD_PACKAGES=(
     zoxide
 )
 
+# ------------------------------------------------------------------------------
+# Section 5: APT Package Installation Pipeline
+# ------------------------------------------------------------------------------
 log_info "Updating package lists..."
 $SUDO apt-get update -y
 
@@ -112,6 +137,7 @@ else
     TARGET_PACKAGES=("${CORE_PACKAGES[@]}" "${AI_DEV_PACKAGES[@]}")
 fi
 
+# Enforce confdef and confold to preserve existing configs without blocking prompts
 $SUDO apt-get install -y \
     -o Dpkg::Options::="--force-confdef" \
     -o Dpkg::Options::="--force-confold" \
@@ -123,7 +149,11 @@ $SUDO apt-get install -y \
         done
     }
 
-# Install uv (Blazing fast Python & AI package manager)
+# ------------------------------------------------------------------------------
+# Section 6: Cryptographically Pinned Binary: Astral uv
+# ------------------------------------------------------------------------------
+# uv: High-performance Python package installer & environment resolver.
+# Invariant: Pinned SHA256 checksums prevent supply-chain tampering.
 if ! command -v uv >/dev/null 2>&1; then
     log_info "Installing pinned uv release with SHA256 verification..."
     UV_VER="0.6.5"
@@ -170,7 +200,11 @@ if ! command -v uv >/dev/null 2>&1; then
     fi
 fi
 
-# Install pueue (Task queue / process manager for experiment harness)
+# ------------------------------------------------------------------------------
+# Section 7: Cryptographically Pinned Binary: Pueue Task Queue Daemon
+# ------------------------------------------------------------------------------
+# pueue: Subprocess task queue manager for agent eval runs and background loops.
+# First attempts distribution package; falls back to verified static musl binary.
 if ! command -v pueue >/dev/null 2>&1; then
     log_info "Attempting to install pueue task queue..."
     if $SUDO apt-get install -y --no-install-recommends pueue >/dev/null 2>&1; then

@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# sysinfo - Quick system summary for Ubuntu/Debian
+# ==============================================================================
+# File:        bin/sysinfo
+# Component:   Developer Workflows & System Observability Substrate
+# Description: Generates a terse hardware, memory, GPU, disk, and networking
+#              diagnostic summary table for quick terminal inspection.
+# Invariants:  - Non-destructive and safe for unprivileged user execution.
+#              - Tolerates missing optional commands (free, nvidia-smi) gracefully.
+# Dependencies: bash (>= 4.0), coreutils, tput
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Linux)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Capability Discovery & ANSI Formatting
+# ------------------------------------------------------------------------------
 bold=$(tput bold 2>/dev/null || echo "")
 reset=$(tput sgr0 2>/dev/null || echo "")
 cyan=$(tput setaf 6 2>/dev/null || echo "")
@@ -13,6 +25,9 @@ echo "${bold}${cyan}=====================================================${reset
 echo "${bold}${cyan}                 SYSTEM OVERVIEW                     ${reset}"
 echo "${bold}${cyan}=====================================================${reset}"
 
+# ------------------------------------------------------------------------------
+# Section 2: Operating System & Host Environment Identity
+# ------------------------------------------------------------------------------
 echo "${bold}OS:${reset}        $(cat /etc/os-release 2>/dev/null | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"' || uname -s)"
 echo "${bold}Kernel:${reset}    $(uname -r)"
 echo "${bold}Uptime:${reset}    $(uptime -p 2>/dev/null || uptime | awk -F'( |,|:)+' '{print $6,$7",",$8,"hours,"}')"
@@ -20,15 +35,27 @@ echo "${bold}Host:${reset}      $(hostname)"
 echo "${bold}User:${reset}      $(whoami) (UID: $EUID)"
 echo "${bold}Shell:${reset}     $SHELL"
 
+# ------------------------------------------------------------------------------
+# Section 3: Hardware & Computational Resources (RAM, Disk, GPU)
+# ------------------------------------------------------------------------------
 echo ""
 echo "${bold}${yellow}--- Resources ---${reset}"
 if command -v free >/dev/null 2>&1; then
     echo -n "${bold}Memory:${reset}    "
     free -h | awk '/^Mem:/ {print $3 "/" $2 " used"}'
 fi
+
 echo -n "${bold}Disk (/):${reset}  "
 df -h / | awk 'NR==2 {print $3 "/" $2 " (" $5 " used)"}'
 
+if command -v nvidia-smi >/dev/null 2>&1; then
+    echo -n "${bold}GPU:${reset}       "
+    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader 2>/dev/null | head -n 1 || echo "Detected"
+fi
+
+# ------------------------------------------------------------------------------
+# Section 4: Networking & Routing
+# ------------------------------------------------------------------------------
 echo ""
 echo "${bold}${green}--- Network ---${reset}"
 echo -n "${bold}Local IP:${reset}  "

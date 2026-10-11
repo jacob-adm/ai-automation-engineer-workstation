@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
-# bin/dotfiles-update: Command-line wrapper to trigger update.sh
+# ==============================================================================
+# File:        bin/dotfiles-update
+# Component:   Workstation Lifecycle & Synchronization Substrate
+# Description: Symlinked CLI wrapper targeting the root update.sh orchestrator.
+# Invariants:  - Dynamically resolves canonical physical repository root.
+#              - Preserves caller flags and arguments when invoking update.sh.
+# Dependencies: bash (>= 4.0), coreutils (readlink, dirname)
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
-# Resolve canonical physical directory of dotfiles
+# ------------------------------------------------------------------------------
+# Canonical Repository Directory Resolution
+# ------------------------------------------------------------------------------
+# Resolve symlink chain to identify the true physical root of the repository
 SCRIPT_SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SCRIPT_SOURCE" ]; do
     SCRIPT_DIR="$(cd -P "$(dirname "$SCRIPT_SOURCE")" >/dev/null 2>&1 && pwd)"
@@ -12,4 +23,5 @@ while [ -h "$SCRIPT_SOURCE" ]; do
 done
 DOTFILES_ROOT="$(cd -P "$(dirname "$SCRIPT_SOURCE")/.." && pwd)"
 
+# Delegate execution directly to the root updater script
 exec "${DOTFILES_ROOT}/update.sh" "$@"

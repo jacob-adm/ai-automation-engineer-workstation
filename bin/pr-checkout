@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
-# bin/pr-checkout: Fast PR branch fetcher and isolated worktree reviewer for GitHub & Bitbucket
+# ==============================================================================
+# File:        bin/pr-checkout
+# Component:   Developer Automation & Review Substrate
+# Description: Fetches remote pull requests and branches for review locally or in
+#              isolated worktrees (supporting GitHub and Bitbucket).
+# Invariants:  - Distinguishes numeric GitHub PR IDs from Bitbucket branch names.
+#              - When --worktree is passed, leaves caller working tree unmodified.
+#              - Sanitizes branch names for filesystem paths (slashes to dashes).
+# Dependencies: bash (>= 4.0), git (>= 2.25)
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Styling & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -15,6 +28,9 @@ log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
 
+# ------------------------------------------------------------------------------
+# Section 2: Usage Documentation
+# ------------------------------------------------------------------------------
 usage() {
     cat << EOF
 ${BOLD}pr-checkout${RESET} - Fetch and review pull requests or remote branches locally or in an isolated worktree
@@ -34,6 +50,9 @@ ${BOLD}Examples:${RESET}
 EOF
 }
 
+# ------------------------------------------------------------------------------
+# Section 3: CLI Argument Parsing
+# ------------------------------------------------------------------------------
 USE_WORKTREE=0
 TARGET_REF=""
 
@@ -64,6 +83,9 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     exit 1
 fi
 
+# ------------------------------------------------------------------------------
+# Section 4: Remote Forge Detection (GitHub vs Bitbucket)
+# ------------------------------------------------------------------------------
 REMOTE_URL="$(git remote get-url origin 2>/dev/null || echo "")"
 IS_GITHUB=0
 IS_BITBUCKET=0
@@ -74,26 +96,29 @@ elif echo "$REMOTE_URL" | grep -qi "bitbucket.org"; then
     IS_BITBUCKET=1
 fi
 
-# Clean branch name for worktree folder (replace slashes with dashes)
+# Sanitize branch or PR identifier for filesystem safety
 CLEAN_NAME="${TARGET_REF//\//-}"
 if [[ "$TARGET_REF" =~ ^[0-9]+$ ]]; then
     CLEAN_NAME="pr-${TARGET_REF}"
 fi
 
+# ------------------------------------------------------------------------------
+# Section 5: Remote Fetch & Refspec Resolution
+# ------------------------------------------------------------------------------
 fetch_ref() {
-    # If numeric PR number
+    # Case A: Numeric PR ID
     if [[ "$TARGET_REF" =~ ^[0-9]+$ ]]; then
         if [ "$IS_GITHUB" -eq 1 ]; then
             log_info "Fetching GitHub PR #${TARGET_REF}..."
             git fetch origin "pull/${TARGET_REF}/head:${CLEAN_NAME}"
             return 0
         elif [ "$IS_BITBUCKET" -eq 1 ]; then
-            # Bitbucket Server PR ref format fallback
+            # Bitbucket Server / Data Center PR refspec pattern
             if git fetch origin "+refs/pull-requests/${TARGET_REF}/from:${CLEAN_NAME}" 2>/dev/null; then
                 log_info "Fetched Bitbucket PR #${TARGET_REF}."
                 return 0
             fi
-            # If not found via Server ref, search remote branches
+            # Bitbucket Cloud fallback: Query remote branch names matching PR ID
             log_info "Searching for Bitbucket branch matching PR #${TARGET_REF}..."
             local matched_branch
             matched_branch="$(git ls-remote --heads origin | awk '{print $2}' | sed 's#refs/heads/##' | grep -E "(^|/|-)0*${TARGET_REF}(-|$)" | head -n 1 || true)"
@@ -105,14 +130,14 @@ fetch_ref() {
             log_error "Could not automatically resolve PR #${TARGET_REF} on Bitbucket. Please specify the branch name (e.g. pr-checkout feature/branch-name)."
             exit 1
         else
-            # Generic fallback: try pull/<num>/head
+            # Generic Git server fallback
             git fetch origin "pull/${TARGET_REF}/head:${CLEAN_NAME}" 2>/dev/null || {
                 log_error "Could not resolve numeric PR #${TARGET_REF}. Please pass branch name directly."
                 exit 1
             }
         fi
     else
-        # Target is a branch name (e.g. feature/foo, agent/bar)
+        # Case B: Standard branch name (e.g., feature/auth, agent/task)
         log_info "Fetching branch '${TARGET_REF}' from origin..."
         git fetch origin "${TARGET_REF}:${CLEAN_NAME}" 2>/dev/null || git fetch origin "${TARGET_REF}"
     fi
@@ -120,6 +145,9 @@ fetch_ref() {
 
 fetch_ref
 
+# ------------------------------------------------------------------------------
+# Section 6: Checkout Execution (Isolated Worktree vs Local Tree)
+# ------------------------------------------------------------------------------
 if [ "$USE_WORKTREE" -eq 1 ]; then
     log_info "Creating isolated worktree at .worktrees/${CLEAN_NAME}..."
     agent-worktree new "${CLEAN_NAME}" "${CLEAN_NAME}"
@@ -132,6 +160,7 @@ if [ "$USE_WORKTREE" -eq 1 ]; then
     echo -e "When finished, discard the review worktree:"
     echo -e "  ${BOLD}agent-worktree remove ${CLEAN_NAME}${RESET}"
 else
+    # In-place checkout on caller working tree
     if [[ "$TARGET_REF" =~ ^[0-9]+$ ]] && [ "$IS_GITHUB" -eq 1 ] && command -v gh >/dev/null 2>&1; then
         gh pr checkout "$TARGET_REF"
     else
