@@ -348,6 +348,31 @@ The automated test verifies:
 
 ---
 
+## 🗺️ Architectural Roadmap (v1.0.0 ➔ v2.0.0)
+
+With **`v1.0.0`** established as the hardened, deterministically tested workstation baseline, future milestones target expanding from single-host developer environments into distributed, enterprise-grade agent runtimes:
+
+* **`v1.0.0` — Production Baseline (Current)**:
+  - Cryptographic binary pinning (`uv`, `pueue`) & 7-day PyPI supply chain quarantine.
+  - Fail-closed secret isolation (`secret-run`) with strict AST parsing and `--strict` ambient `.env` suppression.
+  - Local git worktrees (`agent-worktree`) for non-blocking agent concurrency.
+  - File-based circuit breakers (`agent-stop`) and 48-check self-healing diagnostic suite (`doctor`).
+  - 17-stage containerized test suite with 100% empirical verification receipts.
+
+* **`v1.1.0` — Enterprise Secret Backends**:
+  - Native integration of enterprise cloud secret managers (1Password CLI, AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault) directly into `secret-run`.
+  - Ephemeral in-memory key injection without writing unencrypted `.env` files to disk.
+
+* **`v1.2.0` — Distributed Agent Queues**:
+  - Multi-node `pueue` daemon peering connecting your local workstation to remote Cloud GPU pods (RunPod, Lambda Labs, Hetzner).
+  - Unified job submission (`jexp`, `jagent`) with automated workload offloading to remote GPU compute.
+
+* **`v2.0.0` — Kernel-Level Agent Containment**:
+  - Evolution from file-based circuit breakers and git worktrees to lightweight **eBPF network filtering** and **cgroup v2 resource limits** per autonomous agent subprocess.
+  - Hard OS-enforced egress firewalls preventing credential exfiltration even in the event of complex prompt injection.
+
+---
+
 ## Acknowledgements & Credits
 
 This repository draws inspiration from the following open-source dotfiles and AI tooling projects:
