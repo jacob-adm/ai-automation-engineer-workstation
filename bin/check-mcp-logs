@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# bin/check-mcp-logs: Inspect, tail, and manage MCP server logs across AI harnesses
+# ==============================================================================
+# File:        bin/check-mcp-logs
+# Component:   Model Context Protocol (MCP) Observability Substrate
+# Description: Discovers, inspects, tails, and clears MCP server logs across AI
+#              agent harnesses (Claude Code, Antigravity, OpenCode).
+# Invariants:  - Automatically searches standard and agent-specific log paths.
+#              - Provides safe non-destructive clearing (> file).
+# Dependencies: bash (>= 4.0), coreutils (tail, find)
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Formatting & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -10,20 +22,26 @@ RED="\033[0;31m"
 CYAN="\033[0;36m"
 RESET="\033[0m"
 
-log_info()  { echo -e "${CYAN}[INFO]${RESET} $*"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${RESET} $*"; }
+log_info() { echo -e "${CYAN}[INFO]${RESET} $*"; }
+log_warn() { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 
+# ------------------------------------------------------------------------------
+# Section 2: Usage Documentation
+# ------------------------------------------------------------------------------
 usage() {
     cat << EOF
 ${BOLD}check-mcp-logs${RESET} - View and manage Model Context Protocol (MCP) server logs
 
 ${BOLD}Usage:${RESET}
-  check-mcp-logs           Show recent log entries
+  check-mcp-logs           Show recent log entries across detected harnesses
   check-mcp-logs --tail    Follow logs in real-time
   check-mcp-logs --clear   Clear MCP log files
 EOF
 }
 
+# ------------------------------------------------------------------------------
+# Section 3: Known Agent Harness Log Paths Discovery
+# ------------------------------------------------------------------------------
 CANDIDATE_DIRS=(
     "$HOME/.local/state/mcp"
     "$HOME/.claude/logs"
@@ -43,8 +61,12 @@ done
 PRIMARY_LOG="$HOME/.local/state/mcp/mcp-server.log"
 mkdir -p "$(dirname "$PRIMARY_LOG")"
 
+# ------------------------------------------------------------------------------
+# Section 4: Subcommand Execution (Tail, Clear, or Tail Recent)
+# ------------------------------------------------------------------------------
 case "${1:-}" in
     --tail|-f)
+        # Follow latest active log file or fallback to primary server log
         if [ ${#FOUND_LOGS[@]} -gt 0 ]; then
             log_info "Following latest MCP log: ${FOUND_LOGS[0]} (Ctrl+C to stop)..."
             tail -f "${FOUND_LOGS[0]}"
@@ -58,6 +80,7 @@ case "${1:-}" in
         fi
         ;;
     --clear)
+        # Non-destructive log truncation: Resets file length without removing inode
         if [ ${#FOUND_LOGS[@]} -gt 0 ]; then
             for f in "${FOUND_LOGS[@]}"; do
                 > "$f"
@@ -72,6 +95,7 @@ case "${1:-}" in
         usage
         ;;
     *)
+        # Default mode: Display trailing 20 lines of each detected log
         echo -e "${BOLD}${CYAN}=== Model Context Protocol (MCP) Logs ===${RESET}"
         if [ ${#FOUND_LOGS[@]} -eq 0 ]; then
             echo "No existing MCP log files found."

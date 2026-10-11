@@ -1,8 +1,20 @@
 #!/usr/bin/env bash
-# bin/gha-failed-logs: Fetch latest failed GitHub Actions logs for AI agents and terminal debugging
+# ==============================================================================
+# File:        bin/gha-failed-logs
+# Component:   CI/CD Diagnostic & Terminal Observability Substrate
+# Description: Queries GitHub Actions API via 'gh' to inspect failed run logs
+#              directly in the terminal without opening a browser.
+# Invariants:  - Auto-resolves repository slug from git remote if unprovided.
+#              - Fails closed if 'gh' CLI is missing or unauthenticated.
+# Dependencies: bash (>= 4.0), gh (GitHub CLI), git
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Formatting & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -13,11 +25,17 @@ RESET="\033[0m"
 log_info()  { echo -e "${CYAN}[INFO]${RESET} $*" >&2; }
 log_error() { echo -e "${RED}[ERROR]${RESET} $*" >&2; }
 
+# ------------------------------------------------------------------------------
+# Section 2: Dependency Pre-flight Verification
+# ------------------------------------------------------------------------------
 if ! command -v gh >/dev/null 2>&1; then
     log_error "GitHub CLI ('gh') is not installed. Install via: sudo apt install gh"
     exit 1
 fi
 
+# ------------------------------------------------------------------------------
+# Section 3: Target Repository Resolution (Argument or Origin Remote)
+# ------------------------------------------------------------------------------
 REPO=""
 if [ $# -gt 0 ] && [[ "$1" == *"/"* ]]; then
     REPO="$1"
@@ -25,7 +43,7 @@ if [ $# -gt 0 ] && [[ "$1" == *"/"* ]]; then
 elif git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     remote_url=$(git remote get-url origin 2>/dev/null || echo "")
     if [ -n "$remote_url" ]; then
-        # Parse owner/repo from https or ssh url
+        # Parse owner/repo from https or ssh url format
         REPO=$(echo "$remote_url" | sed -E 's#^.*github\.com[:/]([^/]+/[^/.]+)(\.git)?$#\1#')
     fi
 fi
@@ -36,9 +54,12 @@ if [ -z "$REPO" ]; then
     exit 1
 fi
 
+# ------------------------------------------------------------------------------
+# Section 4: Query Failed Workflow Runs & Display Step Logs
+# ------------------------------------------------------------------------------
 log_info "Querying latest failed GitHub Actions runs for $REPO..."
 
-# Find latest failed run
+# Query GitHub Actions REST API via 'gh' for the most recent failed workflow ID
 latest_run_id=$(gh run list -R "$REPO" -L 10 --status failure --json databaseId,name,headBranch --jq '.[0].databaseId' 2>/dev/null || echo "")
 
 if [ -z "$latest_run_id" ] || [ "$latest_run_id" = "null" ]; then

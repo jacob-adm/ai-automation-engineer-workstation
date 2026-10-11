@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
-# bin/agent-worktree: Git worktree manager for concurrent AI agent harnesses
+# ==============================================================================
+# File:        bin/agent-worktree
+# Component:   Multi-Agent Worktree Concurrency Substrate
+# Description: Isolates autonomous AI agent workflows into dedicated git worktrees.
+# Invariants:  - Every agent task executes on a dedicated branch ('agent/<name>')
+#                in an isolated physical directory ('.worktrees/<name>').
+#              - Prevents concurrent agents from corrupting the index or working tree.
+#              - Propagates project-level secrets (.envrc) without tracking them.
+# Dependencies: bash (>= 4.0), git (>= 2.25)
+# Target OS:   Ubuntu 22.04+ / Debian 12+ (or POSIX Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# Section 1: Terminal Styling & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -15,6 +28,9 @@ log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
 
+# ------------------------------------------------------------------------------
+# Section 2: Usage Documentation
+# ------------------------------------------------------------------------------
 usage() {
     cat << EOF
 ${BOLD}agent-worktree${RESET} - Manage isolated git worktrees for concurrent AI agent workflows
@@ -33,6 +49,9 @@ ${BOLD}Examples:${RESET}
 EOF
 }
 
+# ------------------------------------------------------------------------------
+# Section 3: Repository State Pre-flight Verification
+# ------------------------------------------------------------------------------
 check_git_repo() {
     if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         log_error "Not inside a git repository."
@@ -40,6 +59,9 @@ check_git_repo() {
     fi
 }
 
+# ------------------------------------------------------------------------------
+# Section 4: Worktree Creation Routine ('new')
+# ------------------------------------------------------------------------------
 cmd_new() {
     local task_name="${1:-}"
     local base_branch="${2:-HEAD}"
@@ -55,12 +77,13 @@ cmd_new() {
     local worktree_dir="${repo_root}/.worktrees/${task_name}"
     local branch_name="agent/${task_name}"
 
+    # Collision guard: Refuse to overwrite active worktree path
     if [ -d "$worktree_dir" ]; then
         log_error "Worktree directory already exists: $worktree_dir"
         exit 1
     fi
 
-    # Ensure .worktrees is gitignored in repo root
+    # Invariant: Guarantee .worktrees/ is ignored globally or locally to prevent commit leakage
     if [ -f "${repo_root}/.gitignore" ]; then
         if ! grep -q "^\.worktrees" "${repo_root}/.gitignore"; then
             echo -e "\n.worktrees/" >> "${repo_root}/.gitignore"
@@ -73,7 +96,7 @@ cmd_new() {
     log_info "Creating worktree at $worktree_dir on branch $branch_name (from $base_branch)..."
     git worktree add -b "$branch_name" "$worktree_dir" "$base_branch"
 
-    # Copy project local secrets if present, keeping secure permissions
+    # Context inheritance: Propagate direnv config if present
     if [ -f "${repo_root}/.envrc" ]; then
         cp "${repo_root}/.envrc" "${worktree_dir}/.envrc" 2>/dev/null || true
     fi
@@ -87,12 +110,18 @@ cmd_new() {
     echo -e "  ${BOLD}agent-worktree merge ${task_name}${RESET}"
 }
 
+# ------------------------------------------------------------------------------
+# Section 5: Worktree Inspection ('list')
+# ------------------------------------------------------------------------------
 cmd_list() {
     check_git_repo
     echo -e "${BOLD}${CYAN}=== Active Git Worktrees ===${RESET}"
     git worktree list
 }
 
+# ------------------------------------------------------------------------------
+# Section 6: Worktree Merge Routine ('merge')
+# ------------------------------------------------------------------------------
 cmd_merge() {
     local task_name="${1:-}"
     if [ -z "$task_name" ]; then
@@ -107,10 +136,12 @@ cmd_merge() {
     local worktree_dir="${repo_root}/.worktrees/${task_name}"
 
     log_info "Merging branch '$branch_name' into current branch..."
+    # Non-fast-forward merge creates an explicit merge commit documenting the agent contribution
     git merge --no-ff "$branch_name" -m "merge: agent task '$task_name'"
 
     log_success "Merged successfully!"
 
+    # Post-merge cleanup: Dismantle worktree and remove merged agent branch
     if [ -d "$worktree_dir" ]; then
         log_info "Removing worktree directory: $worktree_dir"
         git worktree remove "$worktree_dir"
@@ -119,6 +150,9 @@ cmd_merge() {
     fi
 }
 
+# ------------------------------------------------------------------------------
+# Section 7: Worktree Removal & Teardown ('remove')
+# ------------------------------------------------------------------------------
 cmd_remove() {
     local task_name="${1:-}"
     local force=0
@@ -154,6 +188,9 @@ cmd_remove() {
     log_success "Removed worktree: $task_name"
 }
 
+# ------------------------------------------------------------------------------
+# Section 8: Metadata Pruning ('clean')
+# ------------------------------------------------------------------------------
 cmd_clean() {
     check_git_repo
     log_info "Pruning stale worktree metadata..."
@@ -161,15 +198,18 @@ cmd_clean() {
     log_success "Prune complete."
 }
 
+# ------------------------------------------------------------------------------
+# Section 9: CLI Subcommand Dispatch
+# ------------------------------------------------------------------------------
 action="${1:-}"
 shift || true
 
 case "$action" in
-    new)    cmd_new "$@" ;;
-    list|ls) cmd_list ;;
-    merge)  cmd_merge "$@" ;;
+    new)       cmd_new "$@" ;;
+    list|ls)   cmd_list ;;
+    merge)     cmd_merge "$@" ;;
     remove|rm) cmd_remove "$@" ;;
-    clean)  cmd_clean ;;
+    clean)     cmd_clean ;;
     -h|--help) usage ;;
     *)
         usage

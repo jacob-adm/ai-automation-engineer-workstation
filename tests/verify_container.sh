@@ -1,10 +1,23 @@
 #!/usr/bin/env bash
-# tests/verify_container.sh: Exhaustive verification test suite with empirical receipts
+# ==============================================================================
+# File:        tests/verify_container.sh
+# Component:   End-to-End Container Verification Suite
+# Description: Executes an exhaustive 17-stage empirical verification test suite
+#              inside an Ubuntu container, generating pass/fail receipts for
+#              installations, packages, symlinks, supply-chain, secrets, and agents.
+# Invariants:  - Fail-closed execution: any stage receipt failure terminates the suite.
+#              - Complete lifecycle isolation: scratch repos and archives are pruned on completion.
+# Dependencies: bash, curl, jq, git, python3, tar
+# Target OS:   Ubuntu 24.04 LTS (Container Environment)
+# ==============================================================================
 
 set -euo pipefail
 
 export PATH="$HOME/.local/bin:$PATH"
 
+# ------------------------------------------------------------------------------
+# 1. Terminal Formatting & Receipt Reporters
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -16,6 +29,9 @@ pass() { echo -e "  ${GREEN}[RECEIPT PASS]${RESET} $*"; }
 fail() { echo -e "  ${RED}[RECEIPT FAIL]${RESET} $*"; exit 1; }
 header() { echo -e "\n${BOLD}${CYAN}=====================================================${RESET}"; echo -e "${BOLD}${CYAN}==> RECEIPT STAGE: $*${RESET}"; echo -e "${BOLD}${CYAN}=====================================================${RESET}"; }
 
+# ------------------------------------------------------------------------------
+# Stage 1: Installer Execution, Profiles & Idempotency
+# ------------------------------------------------------------------------------
 header "1. Installer Execution, Profiles & Idempotency"
 echo "Testing baseline full installation..."
 ./install.sh -y --profile full
@@ -29,7 +45,7 @@ echo "Testing installer flags: --skip-packages, --skip-links, and --profile mini
 # Restore full profile
 ./install.sh -y --profile full >/dev/null
 
-# Verify idempotency
+# Verify idempotency: re-running installation should not recreate links or perform redundant work
 idempotency_run="$(./install.sh -y --skip-packages)"
 if echo "$idempotency_run" | grep -q "Already linked"; then
     pass "Idempotency verified: re-running install performs zero redundant operations"
@@ -37,7 +53,7 @@ else
     fail "Idempotency check failed"
 fi
 
-# Verify backup mechanism
+# Verify backup mechanism: replacing modified tracked files preserves backups in ~/.dotfiles_backup/
 rm -f "$HOME/.bashrc"
 echo "# user custom change" > "$HOME/.bashrc"
 ./install.sh -y --skip-packages >/dev/null

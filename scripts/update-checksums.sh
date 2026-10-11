@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
-# scripts/update-checksums.sh: Verify or compute SHA256 checksums for pinned binary releases
-# Supports uv (astral-sh/uv) and pueue (Nukesor/pueue) across x86_64 and aarch64 architectures
+# ==============================================================================
+# File:        scripts/update-checksums.sh
+# Component:   Supply Chain Verification & Cryptographic Audit
+# Description: Verifies or computes SHA256 checksums for pinned binary releases
+#              (uv and pueue) across x86_64 and aarch64 architectures.
+# Invariants:  - Upstream release artifacts downloaded to isolated temp directory.
+#              - Fail-closed verification: any hash mismatch exits non-zero.
+#              - Temporary staging directories guaranteed purged via EXIT trap.
+# Dependencies: curl, awk, sha256sum (or shasum), grep
+# Target OS:   Ubuntu 22.04+ / Debian 12+ / macOS (Bash 4.0+)
+# ==============================================================================
 
 set -euo pipefail
 
+# ------------------------------------------------------------------------------
+# 1. Terminal Formatting & Logging
+# ------------------------------------------------------------------------------
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 YELLOW="\033[0;33m"
@@ -16,9 +28,13 @@ log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
 log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
 
+# ------------------------------------------------------------------------------
+# 2. Path Resolution & Cryptographic Hash Engine
+# ------------------------------------------------------------------------------
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGES_SH="${SCRIPT_DIR}/packages.sh"
 
+# Compute SHA256 using platform-available utility (coreutils sha256sum or BSD shasum)
 compute_sha256() {
     local file="$1"
     if command -v sha256sum >/dev/null 2>&1; then
@@ -31,6 +47,9 @@ compute_sha256() {
     fi
 }
 
+# ------------------------------------------------------------------------------
+# 3. CLI Interface & Argument Parsing
+# ------------------------------------------------------------------------------
 usage() {
     echo -e "${BOLD}update-checksums.sh${RESET} - Audit and maintain cryptographic checksums for pinned binaries
 
@@ -78,19 +97,26 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Extract current pinned versions and checksums from scripts/packages.sh
+# ------------------------------------------------------------------------------
+# 4. Target Version Discovery & Sandbox Initialization
+# ------------------------------------------------------------------------------
+# Extract default pinned versions directly from scripts/packages.sh declarations
 PINNED_UV_VER="$(grep -E 'UV_VER=' "$PACKAGES_SH" | head -n1 | cut -d'"' -f2 || echo "0.6.5")"
 PINNED_PUEUE_VER="$(grep -E 'PUEUE_VER=' "$PACKAGES_SH" | head -n1 | cut -d'"' -f2 || echo "v4.0.4")"
 
 UV_VER="${CLI_UV_VER:-$PINNED_UV_VER}"
 PUEUE_VER="${CLI_PUEUE_VER:-$PINNED_PUEUE_VER}"
 
+# Isolate all downloaded binaries in temporary directory purged on script exit
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
 log_info "Querying upstream releases (uv: ${UV_VER}, pueue: ${PUEUE_VER})..."
 
-# 1. Fetch uv checksums
+# ------------------------------------------------------------------------------
+# 5. Upstream Checksum Retrieval & Binary Hashing
+# ------------------------------------------------------------------------------
+# Step 1: astral-sh/uv publishes pre-computed SHA256 files alongside GitHub release assets
 log_info "Fetching uv release checksums for version ${UV_VER}..."
 UV_X86_URL="https://github.com/astral-sh/uv/releases/download/${UV_VER}/uv-x86_64-unknown-linux-gnu.tar.gz.sha256"
 UV_ARM_URL="https://github.com/astral-sh/uv/releases/download/${UV_VER}/uv-aarch64-unknown-linux-gnu.tar.gz.sha256"
@@ -98,7 +124,7 @@ UV_ARM_URL="https://github.com/astral-sh/uv/releases/download/${UV_VER}/uv-aarch
 UV_X86_SHA="$(curl -fsSL "$UV_X86_URL" | awk '{print $1}')"
 UV_ARM_SHA="$(curl -fsSL "$UV_ARM_URL" | awk '{print $1}')"
 
-# 2. Fetch pueue binaries and compute checksums
+# Step 2: Nukesor/pueue does not publish standalone .sha256 files; fetch binaries and calculate local hash
 log_info "Fetching pueue release binaries for version ${PUEUE_VER}..."
 curl -fsSL "https://github.com/Nukesor/pueue/releases/download/${PUEUE_VER}/pueue-x86_64-unknown-linux-musl" -o "${TEMP_DIR}/pueue-x86"
 curl -fsSL "https://github.com/Nukesor/pueue/releases/download/${PUEUE_VER}/pueued-x86_64-unknown-linux-musl" -o "${TEMP_DIR}/pueued-x86"
@@ -110,10 +136,14 @@ PUEUED_X86_SHA="$(compute_sha256 "${TEMP_DIR}/pueued-x86")"
 PUEUE_ARM_SHA="$(compute_sha256 "${TEMP_DIR}/pueue-arm")"
 PUEUED_ARM_SHA="$(compute_sha256 "${TEMP_DIR}/pueued-arm")"
 
+# ------------------------------------------------------------------------------
+# 6. Audit Mode / Output Generation
+# ------------------------------------------------------------------------------
 if [ "$CHECK_MODE" = true ]; then
     log_info "Verifying against pinned checksums in scripts/packages.sh..."
     MISMATCH=0
 
+    # Fail-closed comparator: ensure computed hash exists within packages.sh definition
     check_hash() {
         local name="$1"
         local expected="$2"
@@ -142,6 +172,7 @@ if [ "$CHECK_MODE" = true ]; then
         exit 1
     fi
 else
+    # Emit structured assignment blocks ready for copy-paste or automated patching
     echo -e "
 ${BOLD}${GREEN}========================================================================${RESET}
 ${BOLD}Calculated Cryptographic Checksums (Upstream Release Ground Truth)${RESET}
