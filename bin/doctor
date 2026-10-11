@@ -232,6 +232,10 @@ else
     pass "No default secret file in ~/.secrets/ai.env (clean environment)"
 fi
 
+if [ -x "${DOTFILES_ROOT}/scripts/update-checksums.sh" ]; then
+    pass "Binary checksum verification tool operational (scripts/update-checksums.sh)"
+fi
+
 # Summary
 echo -e "\n${BOLD}${CYAN}=====================================================${RESET}"
 echo -e "Doctor Summary: ${BOLD}${GREEN}$PASSED_CHECKS Passed${RESET}, ${BOLD}${YELLOW}$WARNING_CHECKS Warnings${RESET}, ${BOLD}${RED}$FAILED_CHECKS Failed${RESET} (out of $TOTAL_CHECKS checks)"

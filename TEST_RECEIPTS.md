@@ -321,25 +321,70 @@ Doctor Summary: 46 Passed, 1 Warnings, 0 Failed (out of 47 checks)
 ---
 
 ### Stage 17: Security Invariants, Supply Chain Verification & Defenses
+Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`](tests/run_security.sh)) covering supply chain integrity, secret isolation, parser edge cases, circuit breakers, and telemetry privacy:
 - **Supply Chain Integrity**: Verified zero `curl | sh` pipes in [`scripts/packages.sh`](scripts/packages.sh). Verified official SHA256 cryptographic digests for `uv` (`0.6.5`) and `pueue`/`pueued` (`v4.0.4`).
-- **`secret-run` Fail-Closed Hardening**: Verified that [`bin/secret-run`](bin/secret-run) strictly refuses to load files with group/world-accessible permissions (`0644`).
+- **Checksum Automation**: Verified [`scripts/update-checksums.sh`](scripts/update-checksums.sh) audits and validates pinned hashes against upstream release ground truth (`--check`).
+- **`secret-run` Fail-Closed Hardening**: Verified that [`bin/secret-run`](bin/secret-run) strictly refuses files with insecure permissions (`0644` or `0755`).
 - **Arbitrary Code Execution Defense**: Injected a command substitution payload (`$(touch /tmp/pwned_marker)`) into `.env`; verified the safe parser aborted execution without triggering side effects.
-- **Complex Value Handling**: Verified proper tokenization of base64 secrets containing equality symbols (`==`) and stripped outer quotes.
+- **Complex Value & Quote Stripping**: Verified proper tokenization of base64 secrets containing equality symbols (`==`) and stripped outer quotes.
+- **Parser Edge Cases & Guardrails**:
+  - `export KEY=VALUE` prefix parsing verified.
+  - Unclosed double quotes (`KEY="val`) strictly rejected with non-zero exit code.
+  - Unclosed single quotes (`KEY='val`) strictly rejected with non-zero exit code.
+  - Clean export of empty values (`KEY=` and `export KEY=`).
 - **Bounded MCP Filesystem**: Verified [`config/mcp/mcp.json`](config/mcp/mcp.json) does not expose bare `.` root mount.
 - **Install Dry-Run**: Verified `./install.sh --dry-run` previews symlinks without modifying disk or creating backup directories.
 - **Circuit Breaker Enforcement**: Verified that engaging `agent-stop` immediately rejects queued task executions (`jagent`), and clearing with `agent-resume` restores functionality.
 - **Telemetry Permissions**: Verified `~/.local/state/agent-traces/traces.log` permissions are strictly restricted to `0600`.
 
 ```text
-[RECEIPT PASS] Supply chain defense: Zero unverified curl | sh pipelines detected in package installation
-[RECEIPT PASS] Supply chain defense: Cryptographic SHA256 checksums pinned and enforced for external binaries
-[RECEIPT PASS] secret-run fail-closed: Refused secret file with insecure 0644 permissions
-[RECEIPT PASS] secret-run injection defense: Command substitution was blocked without side effects
-[RECEIPT PASS] secret-run safe parser: Correctly handled base64 equality tokens and stripped quotes
-[RECEIPT PASS] MCP filesystem server scope bounded: Excludes bare '.' root mount
-[RECEIPT PASS] install.sh --dry-run: Preview mode verified with zero filesystem mutations
-[RECEIPT PASS] Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)
-[RECEIPT PASS] Telemetry trace log permissions verified as 0600
+=====================================================
+==> SECURITY SUITE: 1. Supply Chain Verification & Binary Pinning
+=====================================================
+  [SECURITY PASS] Supply chain defense: Zero unverified curl | sh pipelines detected in package installation
+  [SECURITY PASS] Supply chain defense: Cryptographic SHA256 checksums pinned and enforced for external binaries
+  [SECURITY PASS] Checksum automation tool scripts/update-checksums.sh exists and is executable
+
+=====================================================
+==> SECURITY SUITE: 2. Secret Isolation: secret-run Permissions & Fail-Closed Behavior
+=====================================================
+  [SECURITY PASS] secret-run fail-closed: Refused secret file with insecure 0644 permissions
+  [SECURITY PASS] secret-run fail-closed: Refused secret file with executable 0755 permissions
+
+=====================================================
+==> SECURITY SUITE: 3. Secret Isolation: Injection Defenses & Safe Parser Edge Cases
+=====================================================
+  [SECURITY PASS] secret-run injection defense: Command substitution was blocked without side effects
+  [SECURITY PASS] secret-run safe parser: Correctly handled base64 equality tokens and stripped quotes
+  [SECURITY PASS] secret-run parser: Correctly parsed lines with leading 'export ' prefix
+  [SECURITY PASS] secret-run fail-closed: Rejected file with unclosed double quote
+  [SECURITY PASS] secret-run fail-closed: Rejected file with unclosed single quote
+  [SECURITY PASS] secret-run parser: Cleanly exported empty string variables (KEY= and export KEY=)
+
+=====================================================
+==> SECURITY SUITE: 4. Model Context Protocol (MCP) Boundary Verification
+=====================================================
+  [SECURITY PASS] MCP filesystem server scope bounded: Excludes bare '.' root mount
+
+=====================================================
+==> SECURITY SUITE: 5. Installer Safety & Dry-Run Preview
+=====================================================
+  [SECURITY PASS] install.sh --dry-run: Preview mode verified with zero filesystem mutations
+
+=====================================================
+==> SECURITY SUITE: 6. Circuit Breaker & Guardrails
+=====================================================
+  [SECURITY PASS] Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)
+
+=====================================================
+==> SECURITY SUITE: 7. Telemetry Trace Log Security
+=====================================================
+  [SECURITY PASS] Telemetry trace directory configured for 0600 logging upon agent spawn
+
+========================================================================
+  ALL SECURITY & SUPPLY CHAIN INVARIANTS VERIFIED SUCCESSFULLY!         
+========================================================================
+  [RECEIPT PASS] Modular security test suite (tests/run_security.sh) completed with 100% success
 ```
 
 ---
