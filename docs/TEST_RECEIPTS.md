@@ -321,10 +321,10 @@ Doctor Summary: 46 Passed, 1 Warnings, 0 Failed (out of 47 checks)
 ---
 
 ### Stage 17: Security Invariants, Supply Chain Verification & Defenses
-Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`](tests/run_security.sh)) covering supply chain integrity, secret isolation, parser edge cases, circuit breakers, and telemetry privacy:
-- **Supply Chain Integrity**: Verified zero `curl | sh` pipes in [`scripts/packages.sh`](scripts/packages.sh). Verified official SHA256 cryptographic digests for `uv` (`0.6.5`) and `pueue`/`pueued` (`v4.0.4`).
-- **Checksum Automation**: Verified [`scripts/update-checksums.sh`](scripts/update-checksums.sh) audits and validates pinned hashes against upstream release ground truth (`--check`).
-- **`secret-run` Fail-Closed Hardening**: Verified that [`bin/secret-run`](bin/secret-run) strictly refuses files with insecure permissions (`0644` or `0755`).
+Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`](../tests/run_security.sh)) covering supply chain integrity, secret isolation, parser edge cases, circuit breakers, and telemetry privacy:
+- **Supply Chain Integrity**: Verified zero `curl | sh` pipes in [`scripts/packages.sh`](../scripts/packages.sh). Verified official SHA256 cryptographic digests for `uv` (`0.6.5`) and `pueue`/`pueued` (`v4.0.4`).
+- **Checksum Automation**: Verified [`scripts/update-checksums.sh`](../scripts/update-checksums.sh) audits and validates pinned hashes against upstream release ground truth (`--check`).
+- **`secret-run` Fail-Closed Hardening**: Verified that [`bin/secret-run`](../bin/secret-run) strictly refuses files with insecure permissions (`0644` or `0755`).
 - **Arbitrary Code Execution Defense**: Injected a command substitution payload (`$(touch /tmp/pwned_marker)`) into `.env`; verified the safe parser aborted execution without triggering side effects.
 - **Complex Value & Quote Stripping**: Verified proper tokenization of base64 secrets containing equality symbols (`==`) and stripped outer quotes.
 - **Parser Edge Cases & Guardrails**:
@@ -333,7 +333,7 @@ Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`
   - Unclosed single quotes (`KEY='val`) strictly rejected with non-zero exit code.
   - Clean export of empty values (`KEY=` and `export KEY=`).
   - Strict mode (`--strict` / `SECRET_RUN_STRICT=1`) blocks ambient `.env` discovery when running on untrusted repositories.
-- **Bounded MCP Filesystem**: Verified [`config/mcp/mcp.json`](config/mcp/mcp.json) does not expose bare `.` root mount.
+- **Bounded MCP Filesystem**: Verified [`config/mcp/mcp.json`](../config/mcp/mcp.json) does not expose bare `.` root mount.
 - **Install Dry-Run**: Verified `./install.sh --dry-run` previews symlinks without modifying disk or creating backup directories.
 - **Circuit Breaker Enforcement**: Verified that engaging `agent-stop` immediately rejects queued task executions (`jagent`), and clearing with `agent-resume` restores functionality.
 - **Telemetry Permissions**: Verified `~/.local/state/agent-traces/traces.log` permissions are strictly restricted to `0600`.

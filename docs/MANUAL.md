@@ -1,3 +1,5 @@
+![The AI Automation Engineer's Field Manual](cover_1200x627.jpg)
+
 # The AI Automation Engineer's Field Manual
 ### Concepts, Architecture, and Systems Engineering for Autonomous Agent Runtimes
 
@@ -12,10 +14,11 @@ To avoid confusion, here is how the documentation in this repository is structur
 
 | Document | Purpose | Audience & Mindset | When to Read |
 | :--- | :--- | :--- | :--- |
-| [**README.md**](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/README.md) | **System Specifications & Quick Reference** | High-level overview, CLI flags, list of installed tools, and symlink inventory. | Before cloning or when looking up a specific flag/command. |
-| [**QUICK-START.md**](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/QUICK-START.md) | **30-Minute Hands-On Mission Sprint** | Interactive tutorials, playground missions, sample prompts, and practical tasks. | Your first morning on the job to get your hands dirty. |
-| [**TEST_RECEIPTS.md**](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/TEST_RECEIPTS.md) | **Empirical Proof & Verification Receipts** | Container test results, idempotency proof, and 16-stage validation records. | For audits, CI/CD validation, and security compliance. |
-| [**MANUAL.md**](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/MANUAL.md) *(This Document)* | **The Definitive Conceptual & Systems Manual** | Deep architectural rationale, threat models, mental models, and the mechanics of agent execution. | When you want to truly master AI engineering and understand how this environment operates. |
+| [**README.md**](../README.md) | **System Specifications & Quick Reference** | High-level overview, CLI flags, list of installed tools, and symlink inventory. | Before cloning or when looking up a specific flag/command. |
+| [**QUICK-START.md**](QUICK-START.md) | **30-Minute Hands-On Mission Sprint** | Interactive tutorials, playground missions, sample prompts, and practical tasks. | Your first morning on the job to get your hands dirty. |
+| [**DIAGRAMS.md**](DIAGRAMS.md) | **Architectural Diagrams & Visual Reference** | Rendered macro/micro Mermaid diagrams, containment boundaries, and execution sequences. | When visualizing system topology and agent containment flows. |
+| [**TEST_RECEIPTS.md**](TEST_RECEIPTS.md) | **Empirical Proof & Verification Receipts** | Container test results, idempotency proof, and 17-stage validation records. | For audits, CI/CD validation, and security compliance. |
+| [**MANUAL.md**](MANUAL.md) *(This Document)* | **The Definitive Conceptual & Systems Manual** | Deep architectural rationale, threat models, mental models, and the mechanics of agent execution. | When you want to truly master AI engineering and understand how this environment operates. |
 
 ---
 
@@ -609,4 +612,4 @@ When things go wrong in autonomous agent workflows, use this quick diagnostic gu
 
 ---
 
-*Manual maintained by the AI Automation Engineering Team. For testing and verification proofs, refer to [TEST_RECEIPTS.md](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/TEST_RECEIPTS.md).*
+*Manual maintained by the AI Automation Engineering Team. For visual architecture diagrams and empirical verification proofs, refer to [DIAGRAMS.md](DIAGRAMS.md) and [TEST_RECEIPTS.md](TEST_RECEIPTS.md).*

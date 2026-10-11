@@ -1,3 +1,5 @@
+![AI Automation Engineer Workstation](docs/cover_1200x627.jpg)
+
 # AI Automation Engineer Workstation: Ubuntu Baseline & Harness
 
 A modular, robust, and security-hardened workstation repository designed for **AI Automation Engineers** and **AI Engineers** (developers running autonomous agents, local test harnesses, and model evals) on Ubuntu.
@@ -5,9 +7,10 @@ A modular, robust, and security-hardened workstation repository designed for **A
 Includes automated package bootstrapping, supply chain quarantine, credential isolation, git worktree isolation for concurrent agents, task queue supervision, and full Docker container verification.
 
 > 📚 **Complete Documentation Suite:**
-> - 📖 **[The AI Automation Engineer's Field Manual](MANUAL.md)**: Deep architectural guide explaining agent runtime layers, threat models, supply chain defense, and systems engineering for autonomous agents.
-> - 🚀 **[The Quick Start Guide](QUICK-START.md)**: Hands-on 30-minute walkthrough, interactive playground missions, and real-world recipes for controlling agents.
-> - 🧪 **[Empirical Test Receipts](TEST_RECEIPTS.md)**: 17-stage container verification proofs and assertion records.
+> - 📖 **[The AI Automation Engineer's Field Manual](docs/MANUAL.md)**: Deep architectural guide explaining agent runtime layers, threat models, supply chain defense, and systems engineering for autonomous agents.
+> - 🚀 **[The Quick Start Guide](docs/QUICK-START.md)**: Hands-on 30-minute walkthrough, interactive playground missions, and real-world recipes for controlling agents.
+> - 📊 **[Architectural Diagrams & Visual Reference](docs/DIAGRAMS.md)**: Visual architecture, containment layer diagrams, and turn sequence flows.
+> - 🧪 **[Empirical Test Receipts](docs/TEST_RECEIPTS.md)**: 17-stage container verification proofs and assertion records.
 
 ---
 
@@ -149,12 +152,14 @@ Executes:
 ai-automation-engineer-workstation/
 ├── .gitignore
 ├── README.md
-├── QUICK-START.md                 # Quick Start onboarding guide & walkthrough
-├── MANUAL.md                      # The AI Automation Engineer's Field Manual
-├── TEST_RECEIPTS.md               # Empirical container verification receipts
 ├── CONTRIBUTING.md                # Engineering standards & PR contribution guide
 ├── install.sh                     # Modular installer (profiles: full, cloud, minimal)
 ├── update.sh                      # Automated updater and self-healing synchronizer
+├── docs/
+│   ├── MANUAL.md                  # The AI Automation Engineer's Field Manual
+│   ├── QUICK-START.md             # Quick Start onboarding guide & walkthrough
+│   ├── DIAGRAMS.md                # Architectural diagrams & visual reference
+│   └── TEST_RECEIPTS.md           # Empirical container verification receipts
 ├── bin/
 │   ├── agent-worktree             # Isolated git worktrees for concurrent agents
 │   ├── check-mcp-logs             # MCP server log viewer and real-time tailer
