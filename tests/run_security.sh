@@ -247,8 +247,23 @@ if [ -f "$HOME/.ai_automation.sh" ] && [ -f "$HOME/.bash_aliases.d/ai.sh" ]; the
         exit 1
     fi
     agent-resume >/dev/null
+
+    # Test rate limit enforcement and trace compaction in hermetic directory
+    tmp_trace_dir=$(mktemp -d)
+    (
+        export AUTO_AGENT_TRACE_DIR="$tmp_trace_dir"
+        export AUTO_AGENT_MAX_PER_HOUR=1
+        agent-guard-check "rate-test-1" >/dev/null 2>&1 || exit 1
+        agent-guard-check "rate-test-2" >/dev/null 2>&1
+        rc=$?
+        [ "$rc" -eq 2 ] || exit 1
+        agent-traces-compact 50 >/dev/null 2>&1
+    )
+    rc_sub=$?
+    rm -rf "$tmp_trace_dir"
+    [ "$rc_sub" -eq 0 ] || exit 1
     '
-    pass "Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)"
+    pass "Circuit breaker & rate limiter enforcement: sentinel halt, quota rejection (exit 2), and compaction verified"
 elif [ -f "$AI_ENV" ] && [ -f "$AI_ALIAS" ]; then
     bash -c '
     source "'"$AI_ENV"'"
@@ -259,8 +274,23 @@ elif [ -f "$AI_ENV" ] && [ -f "$AI_ALIAS" ]; then
         exit 1
     fi
     agent-resume >/dev/null
+
+    # Test rate limit enforcement and trace compaction in hermetic directory
+    tmp_trace_dir=$(mktemp -d)
+    (
+        export AUTO_AGENT_TRACE_DIR="$tmp_trace_dir"
+        export AUTO_AGENT_MAX_PER_HOUR=1
+        agent-guard-check "rate-test-1" >/dev/null 2>&1 || exit 1
+        agent-guard-check "rate-test-2" >/dev/null 2>&1
+        rc=$?
+        [ "$rc" -eq 2 ] || exit 1
+        agent-traces-compact 50 >/dev/null 2>&1
+    )
+    rc_sub=$?
+    rm -rf "$tmp_trace_dir"
+    [ "$rc_sub" -eq 0 ] || exit 1
     '
-    pass "Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)"
+    pass "Circuit breaker & rate limiter enforcement: sentinel halt, quota rejection (exit 2), and compaction verified"
 else
     pass "Circuit breaker config files verified in repository"
 fi

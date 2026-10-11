@@ -529,9 +529,10 @@ Think of this setup as your superhero suit. Here are the 7 gadgets (tools and gu
 * **The Solution**: You have an instant kill-switch (emergency circuit breaker). Type `agent-stop` and every automated agent loop in your environment immediately freezes. When you've fixed the prompt, type `agent-resume` to start them back up.
 * **How to use it**:
   ```bash
-  agent-stop     # FREEZE EVERYTHING! (trip circuit breaker)
-  agent-status   # See if the brakes are on (check circuit breaker sentinel)
-  agent-resume   # Brakes off, back to work (clear circuit breaker)
+  agent-stop           # FREEZE EVERYTHING! (trip circuit breaker)
+  agent-status         # See if the brakes are on (check circuit breaker sentinel)
+  agent-resume         # Brakes off, back to work (clear circuit breaker)
+  agent-traces-compact # Prune old turns from trace log (atomic compaction)
   ```
 
 ---
@@ -571,6 +572,7 @@ Here are the most useful everyday commands organized by what you're trying to do
 | `aw-rm <name>` | Throw away an agent room (Git worktree) without keeping changes |
 | `agent-stop` | **Emergency stop**: Freeze all automated agent loops (circuit breaker) |
 | `agent-resume` | Unfreeze all agent loops (clear circuit breaker) |
+| `agent-traces-compact` | Prune old turn records from trace log (atomic compaction) |
 | `mcplogs` | Check recent Model Context Protocol (MCP) server logs |
 | `mcplogs --tail` | Stream MCP server logs live on screen |
 
@@ -613,7 +615,7 @@ Think of agents like energetic interns (autonomous worker processes). If you hir
 3. **RAM & CPU Limits**: Each agent processes files, runs linters, and parses Git.
 4. **Our Built-In Guardrails**:
    - The [`pueue`](../config/pueue/pueue.yml) task queue is pre-configured with **`experiments` (max 2 parallel)** and **`agents` (max 4 parallel)** to protect your hardware.
-   - `agent-guard-check` enforces a ceiling of **30 agent spawns per hour** (`AUTO_AGENT_MAX_PER_HOUR=30`) so runaway recursive scripts can't bankrupt you.
+   - `agent-guard-check` enforces a ceiling of **30 agent spawns per hour** (`AUTO_AGENT_MAX_PER_HOUR=30`) via atomic `flock` and $O(1)$ bounded tail scan so runaway recursive scripts can't bankrupt you or create race conditions.
 
 ---
 

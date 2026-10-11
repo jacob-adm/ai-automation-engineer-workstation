@@ -302,8 +302,28 @@ else
     echo "Trace log was not created!"
     exit 1
 fi
+
+# 7. Verify rate limit enforcement and trace compaction in hermetic directory
+tmp_test_dir=$(mktemp -d)
+(
+    export AUTO_AGENT_TRACE_DIR="$tmp_test_dir"
+    export AUTO_AGENT_MAX_PER_HOUR=1
+    agent-guard-check "container-rate-1" >/dev/null 2>&1 || exit 1
+    agent-guard-check "container-rate-2" >/dev/null 2>&1
+    rc=$?
+    [ "$rc" -eq 2 ] || exit 1
+    for i in {1..20}; do
+        echo "1000000000 2026-01-01T00:00:00Z dummy" >> "$tmp_test_dir/traces.log"
+    done
+    agent-traces-compact 10 >/dev/null 2>&1
+    left=$(wc -l < "$tmp_test_dir/traces.log")
+    [ "$left" -le 10 ] || exit 1
+)
+rc_comp=$?
+rm -rf "$tmp_test_dir"
+[ "$rc_comp" -eq 0 ] || exit 1
 '
-pass "Circuit breaker (agent-stop, agent-resume, guard-check, telemetry) verified"
+pass "Circuit breaker (agent-stop, agent-resume, guard-check, rate limit, compaction, telemetry) verified"
 
 header "9. Task Queue Supervision (Pueue & Groups)"
 if command -v pueued >/dev/null 2>&1; then

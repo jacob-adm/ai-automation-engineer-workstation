@@ -413,14 +413,16 @@ The workstation implements an **out-of-band** control plane via [`config/ai_auto
 ```
 
 #### Circuit Breaker Commands
-* **`agent-status`**: Shows whether the circuit breaker is active, hourly execution count, and telemetry trace logs.
+* **`agent-status`**: Shows whether the circuit breaker is active, hourly execution count (`Runs in Last Hour: X / 30`), and telemetry trace logs.
 * **`agent-stop`**: The **Emergency Big Red Button**. Drops a sentinel file at `~/.agent_stop`. All agent harnesses and automated test loops immediately abort with exit code 1.
 * **`agent-resume`**: Clears the sentinel file and safely resumes operations.
+* **`agent-traces-compact [max_lines]`**: Prunes historical trace records exceeding retention limits (`AUTO_AGENT_TRACE_MAX_LINES:=10000`) while strictly preserving `0600` permissions.
 * **`agent-guard-check <name>`**: The function that your agent harnesses, cron jobs, and scripts call before initiating a turn:
   ```bash
   agent-guard-check "my-eval-agent" || exit 1
   ```
-* **Task Queue Integration (`jagent`)**: The Pueue workload supervisor wrapper for autonomous agents (`jagent`) automatically invokes `agent-guard-check` before enqueueing jobs, guaranteeing that tripping `agent-stop` immediately rejects queued autonomous execution loops.
+  Optimized with $O(1)$ tail-bounded rate checking, in-process timestamp resolution, atomic `flock` concurrency gating, and automatic periodic compaction every 50 turns.
+* **Task Queue Integration (`jagent`)**: The Pueue workload supervisor wrapper for autonomous agents (`jagent`) automatically invokes `agent-guard-check` before enqueueing jobs, guaranteeing that tripping `agent-stop` immediately rejects queued autonomous execution loops. Features an optimistic submission fast-path for warm queue dispatches.
 
 ---
 
@@ -576,7 +578,7 @@ Create `~/.bash_aliases.local`. It is automatically sourced at the end of `.bash
 
 ### 2. Machine-Specific Overrides
 * **Shell Variables**: Place private environment overrides in `~/.dotfiles.local` (automatically kept with permissions `0600`).
-* **Agent Sentinel Limits**: Override guardrail limits (e.g., `AUTO_AGENT_MAX_PER_HOUR=50`) in `~/.ai_automation.local.sh`.
+* **Agent Sentinel Limits**: Override guardrail limits (e.g., `AUTO_AGENT_MAX_PER_HOUR=50`, `AUTO_AGENT_TRACE_MAX_LINES=20000`) in `~/.ai_automation.local.sh`.
 
 ---
 

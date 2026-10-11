@@ -35,19 +35,23 @@ jrun() {
         fi
     fi
 
-    # Step 2: Ensure pueued daemon is active and initialize target execution group
+    # Step 2: Enqueue task into pueue with optimistic fast path
     if command -v pueue >/dev/null 2>&1; then
-        if ! pueue status >/dev/null 2>&1; then
-            pueued --daemonize >/dev/null 2>&1 || true
+        # Fast path: attempt direct submission when daemon and group are already active
+        if ! pueue add --group "$group" -- "$@" 2>/dev/null; then
+            # Recovery path: ensure daemon is active and initialize target execution group
+            if ! pueue status >/dev/null 2>&1; then
+                pueued --daemonize >/dev/null 2>&1 || true
+            fi
+            if ! pueue group 2>/dev/null | grep -q "^$group "; then
+                pueue group add "$group" >/dev/null 2>&1 || true
+                case "$group" in
+                    experiments) pueue parallel 2 -g "$group" >/dev/null 2>&1 || true ;;
+                    agents)      pueue parallel 4 -g "$group" >/dev/null 2>&1 || true ;;
+                esac
+            fi
+            pueue add --group "$group" -- "$@"
         fi
-        if ! pueue group 2>/dev/null | grep -q "^$group "; then
-            pueue group add "$group" >/dev/null 2>&1 || true
-            case "$group" in
-                experiments) pueue parallel 2 -g "$group" >/dev/null 2>&1 || true ;;
-                agents)      pueue parallel 4 -g "$group" >/dev/null 2>&1 || true ;;
-            esac
-        fi
-        pueue add --group "$group" -- "$@"
     else
         # Fallback to direct synchronous execution if pueue is unavailable
         echo "pueue not installed. Running directly: $*"
