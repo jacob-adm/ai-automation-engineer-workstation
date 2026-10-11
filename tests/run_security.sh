@@ -309,8 +309,21 @@ else
     pass "Telemetry trace directory configured for 0600 logging upon agent spawn"
 fi
 
+# ------------------------------------------------------------------------------
+# 8. Rust Substrate & Zero-Mock Security Test Suite
+# ------------------------------------------------------------------------------
+if command -v cargo >/dev/null 2>&1 && [ -f "${DOTFILES_ROOT}/Cargo.toml" ]; then
+    header "8. Rust Substrate & Zero-Mock Security Test Suite"
+    if cargo test --workspace --manifest-path "${DOTFILES_ROOT}/Cargo.toml" --quiet; then
+        pass "Rust substrate security suite (unit, component, integration, acceptance, regression, e2e): 19 tests passed"
+    else
+        fail "Rust substrate security suite encountered failures"
+    fi
+fi
+
 echo ""
 echo -e "${BOLD}${GREEN}========================================================================${RESET}"
 echo -e "${BOLD}${GREEN}  ALL SECURITY & SUPPLY CHAIN INVARIANTS VERIFIED SUCCESSFULLY!         ${RESET}"
 echo -e "${BOLD}${GREEN}========================================================================${RESET}"
+
 echo ""

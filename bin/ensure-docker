@@ -1,100 +1,27 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # File:        bin/ensure-docker
-# Component:   Container Substrate & Self-Healing Service Validator
-# Description: Verifies Docker daemon responsiveness, socket permissions, and
-#              attempts automated recovery via systemd or init service.
-# Invariants:  - Exits 0 immediately if 'docker info' succeeds.
-#              - Detects missing docker group membership for non-root users.
-#              - Attempts service restart via systemctl or service with sudo fallback.
-# Dependencies: bash (>= 4.0), docker CLI
-# Target OS:   Ubuntu 22.04+ / Debian 12+
+# Component:   AI Automation Workstation Docker Daemon Dispatcher
+# Description: Multi-call dispatch wrapper routing execution to 'workstation docker'.
 # ==============================================================================
-
 set -euo pipefail
 
-# ------------------------------------------------------------------------------
-# Section 1: Terminal Formatting & Logging
-# ------------------------------------------------------------------------------
-BOLD="\033[1m"
-GREEN="\033[0;32m"
-YELLOW="\033[0;33m"
-RED="\033[0;31m"
-CYAN="\033[0;36m"
-RESET="\033[0m"
+if command -v workstation >/dev/null 2>&1; then
+    exec workstation docker "$@"
+fi
 
-log_info()    { echo -e "${CYAN}[INFO]${RESET} $*"; }
-log_success() { echo -e "${GREEN}[OK]${RESET} $*"; }
-log_warn()    { echo -e "${YELLOW}[WARN]${RESET} $*"; }
-log_error()   { echo -e "${RED}[ERROR]${RESET} $*"; }
+if [ -x "$HOME/.local/bin/workstation" ]; then
+    exec "$HOME/.local/bin/workstation" docker "$@"
+fi
 
-# ------------------------------------------------------------------------------
-# Section 2: Docker CLI Availability Pre-flight
-# ------------------------------------------------------------------------------
-if ! command -v docker >/dev/null 2>&1; then
-    log_error "Docker CLI is not installed on this system."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -x "${SCRIPT_DIR}/target/release/workstation" ]; then
+    exec "${SCRIPT_DIR}/target/release/workstation" docker "$@"
+elif command -v cargo >/dev/null 2>&1 && [ -f "${SCRIPT_DIR}/Cargo.toml" ]; then
+    echo "[workstation] Compiling workstation binary..." >&2
+    cargo build --release --manifest-path "${SCRIPT_DIR}/Cargo.toml" --bin workstation >&2
+    exec "${SCRIPT_DIR}/target/release/workstation" docker "$@"
+else
+    echo "[ERROR] 'workstation' binary not found. Run ./bootstrap.sh or 'cargo build --release'." >&2
     exit 1
 fi
-
-# Fast path: If the daemon is responsive, exit immediately with zero latency
-if docker info >/dev/null 2>&1; then
-    log_success "Docker daemon is running and accessible."
-    exit 0
-fi
-
-log_warn "Docker daemon is not responding. Checking Linux service and permissions..."
-
-# ------------------------------------------------------------------------------
-# Section 3: Unix Domain Socket & Group Permissions Guard
-# ------------------------------------------------------------------------------
-if [ -S /var/run/docker.sock ]; then
-    if ! [ -r /var/run/docker.sock ] || ! [ -w /var/run/docker.sock ]; then
-        if ! id -nG | grep -qw docker; then
-            log_error "Current user '$(whoami)' is not in the 'docker' group."
-            echo -e "To grant docker permissions without root, run:"
-            echo -e "  ${BOLD}sudo usermod -aG docker $(whoami) && newgrp docker${RESET}"
-            exit 1
-        fi
-    fi
-fi
-
-# ------------------------------------------------------------------------------
-# Section 4: Multi-Init Service Recovery Attempt (systemd / sysvinit)
-# ------------------------------------------------------------------------------
-STARTED=0
-if command -v systemctl >/dev/null 2>&1 && systemctl status docker >/dev/null 2>&1; then
-    log_info "Attempting to start docker via systemctl..."
-    if [ "$EUID" -eq 0 ]; then
-        systemctl start docker || true
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo systemctl start docker || true
-    fi
-    STARTED=1
-elif command -v service >/dev/null 2>&1 && service docker status >/dev/null 2>&1; then
-    log_info "Attempting to start docker via service..."
-    if [ "$EUID" -eq 0 ]; then
-        service docker start || true
-    elif command -v sudo >/dev/null 2>&1; then
-        sudo service docker start || true
-    fi
-    STARTED=1
-fi
-
-# ------------------------------------------------------------------------------
-# Section 5: Daemon Health Readiness Poll (15-Second Window)
-# ------------------------------------------------------------------------------
-log_info "Waiting for Docker daemon to become responsive..."
-for i in {1..15}; do
-    if docker info >/dev/null 2>&1; then
-        log_success "Docker daemon started and responsive!"
-        exit 0
-    fi
-    sleep 1
-done
-
-# Failure state diagnostics
-log_error "Docker daemon failed to become responsive within 15 seconds."
-if [ "$STARTED" -eq 0 ]; then
-    log_warn "Docker service was not found in systemctl or service managers. If inside a container, ensure Docker socket is mounted (-v /var/run/docker.sock:/var/run/docker.sock)."
-fi
-exit 1

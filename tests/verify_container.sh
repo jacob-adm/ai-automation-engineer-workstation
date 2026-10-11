@@ -458,6 +458,15 @@ else
     pass "ensure-docker exited gracefully without daemon present"
 fi
 
+if command -v workstation >/dev/null 2>&1; then
+    workstation_help="$(workstation --help)"
+    if echo "$workstation_help" | grep -qi "AI Automation Workstation"; then
+        pass "workstation CLI binary multi-call engine operational"
+    else
+        fail "workstation CLI binary failed to display help"
+    fi
+fi
+
 header "14. AI Coding Agent Configurations & Exclusions"
 jq . "$HOME/.claude/settings.json" >/dev/null && pass "Claude Code settings.json is valid JSON schema"
 jq . "$HOME/.config/opencode/opencode.json" >/dev/null && pass "OpenCode opencode.json is valid JSON schema"

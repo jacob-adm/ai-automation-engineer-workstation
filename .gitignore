@@ -19,3 +19,9 @@ Thumbs.db
 
 # Isolated Agent Worktrees
 .worktrees/
+
+# Rust Build Artifacts
+target/
+dist/
+**/*.rs.bk
+

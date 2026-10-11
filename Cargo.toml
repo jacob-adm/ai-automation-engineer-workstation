@@ -1,0 +1,36 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/workstation-core",
+    "crates/workstation-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["AI Automation Workstation Contributors"]
+license = "MIT"
+repository = "https://github.com/ai-automation-engineer-workstation"
+
+[workspace.dependencies]
+anyhow = "1.0"
+thiserror = "2.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+zeroize = { version = "1.8", features = ["derive"] }
+secrecy = "0.10"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+sysinfo = "0.33"
+chrono = "0.4"
+colored = "3.0"
+indicatif = "0.17"
+walkdir = "2.5"
+tempfile = "3.17"
+regex = "1.11"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+nix = { version = "0.29", features = ["process", "fs", "user"] }
+assert_cmd = "2.0"
+predicates = "3.1"
+
