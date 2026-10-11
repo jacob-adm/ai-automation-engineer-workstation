@@ -48,12 +48,13 @@ When running autonomous agents (Antigravity, Claude Code, Codex, Aider), running
 Local agent loops can run amok with recursive subagent spawns or infinite retry loops.
 - **Circuit Breaker Commands**:
   ```bash
-  agent-status    # View active guardrail limits, rate limits, and trace counts
-  agent-stop      # Emergency stop: touches ~/.agent_stop to halt all local agent loops
-  agent-resume    # Clears circuit breaker to resume execution
+  agent-status          # View active guardrail limits, rolling hourly usage, and trace counts
+  agent-stop            # Emergency stop: touches ~/.agent_stop to halt all local agent loops
+  agent-resume          # Clears circuit breaker to resume execution
+  agent-traces-compact  # Compact historical trace logs to keep disk footprints bounded
   ```
-- **`agent-guard-check`**: Pre-flight verification function for test harnesses. Rejects execution if the circuit breaker is tripped or if hourly limits (`AUTO_AGENT_MAX_PER_HOUR=30`) are exceeded.
-- **Trace Logs**: Timestamped telemetry stored at `~/.local/state/agent-traces/traces.log`.
+- **`agent-guard-check`**: Pre-flight verification function for test harnesses. Rejects execution if the circuit breaker is tripped or if hourly limits (`AUTO_AGENT_MAX_PER_HOUR=30`) are exceeded. Features high-performance $O(1)$ tail-bounded rate checking, in-process timestamp resolution, atomic non-blocking file locking (`flock`) for multi-agent concurrency, and periodic auto-compaction.
+- **Trace Logs & Maintenance**: Timestamped telemetry stored at `~/.local/state/agent-traces/traces.log` (mode `0600`). Automatically pruned periodically via `AUTO_AGENT_TRACE_MAX_LINES=10000`.
 
 ### 5. Local Harness Task Queue (`pueue`)
 Run model evals, batch inferences, and agent test suites in the background with concurrency control:

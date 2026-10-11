@@ -15,6 +15,7 @@ This document provides a visual and operational breakdown of the **AI Automation
    - [Architectural Narrative](#architectural-narrative)
 3. [Diagram 2: Runtime Turn Interception & Execution Sequence (Micro View)](#diagram-2-runtime-turn-interception--execution-sequence-micro-view)
    - [Rendered Micro Diagram](#rendered-micro-diagram)
+   - [Visual Reference & Color Legend](#visual-reference--color-legend)
    - [Live Mermaid Sequence](#live-mermaid-sequence-micro)
    - [Raw Mermaid Source](#raw-mermaid-source-micro)
    - [Execution Lifecycle Walkthrough](#execution-lifecycle-walkthrough)
@@ -82,9 +83,10 @@ flowchart TB
             GUARD{"agent-guard-check<br/>config/ai_automation/ai_automation.sh"}
             SENTINEL{"~/.agent_stop<br/>Sentinel Exists?"}
             HALT["🚨 EMERGENCY HALT<br/>agent-stop engaged<br/>Blocks all harness turns"]
-            RATE{"Sliding Rate Limiter<br/>AUTO_AGENT_MAX_PER_HOUR (30)"}
+            RATE{"O(1) Tail Rate Limiter<br/>AUTO_AGENT_MAX_PER_HOUR (30)<br/>Atomic flock Concurrency"}
             RATE_REJECT["⏳ RATE LIMITED<br/>Enforces cooldown delay"]
             TRACE[("📝 Audit Telemetry<br/>~/.local/state/agent-traces/traces.log<br/>(Enforced 0600 Permissions)")]
+            COMPACT["🧹 Auto-Compactor<br/>agent-traces-compact<br/>AUTO_AGENT_TRACE_MAX_LINES (10000)"]
         end
 
         subgraph SECRETS ["Pillar 2: Zero-Ambient Secret Isolation (bin/secret-run)"]
@@ -149,6 +151,7 @@ flowchart TB
     SENTINEL -- "No (Active)" --> RATE
     RATE -- "Quota Exceeded" --> RATE_REJECT
     RATE -- "Turn Allowed" --> TRACE
+    TRACE --> COMPACT
 
     %% Secret Isolation Interception Flow
     SECRUN --> CHMOD
@@ -193,6 +196,7 @@ flowchart TB
     style CHILD fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
     style SANDBOX fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
     style MERGE fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
+    style COMPACT fill:#0b1329,stroke:#38bdf8,stroke-width:1.5px,color:#e2e8f0
 ```
 
 ### Raw Mermaid Source (Macro)
@@ -220,9 +224,10 @@ flowchart TB
             GUARD{"agent-guard-check<br/>config/ai_automation/ai_automation.sh"}
             SENTINEL{"~/.agent_stop<br/>Sentinel Exists?"}
             HALT["🚨 EMERGENCY HALT<br/>agent-stop engaged<br/>Blocks all harness turns"]
-            RATE{"Sliding Rate Limiter<br/>AUTO_AGENT_MAX_PER_HOUR (30)"}
+            RATE{"O(1) Tail Rate Limiter<br/>AUTO_AGENT_MAX_PER_HOUR (30)<br/>Atomic flock Concurrency"}
             RATE_REJECT["⏳ RATE LIMITED<br/>Enforces cooldown delay"]
             TRACE[("📝 Audit Telemetry<br/>~/.local/state/agent-traces/traces.log<br/>(Enforced 0600 Permissions)")]
+            COMPACT["🧹 Auto-Compactor<br/>agent-traces-compact<br/>AUTO_AGENT_TRACE_MAX_LINES (10000)"]
         end
 
         subgraph SECRETS ["Pillar 2: Zero-Ambient Secret Isolation (bin/secret-run)"]
@@ -287,6 +292,7 @@ flowchart TB
     SENTINEL -- "No (Active)" --> RATE
     RATE -- "Quota Exceeded" --> RATE_REJECT
     RATE -- "Turn Allowed" --> TRACE
+    TRACE --> COMPACT
 
     %% Secret Isolation Interception Flow
     SECRUN --> CHMOD
@@ -331,6 +337,7 @@ flowchart TB
     style CHILD fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
     style SANDBOX fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
     style MERGE fill:#064e3b,stroke:#10b981,stroke-width:2px,color:#d1fae5
+    style COMPACT fill:#0b1329,stroke:#38bdf8,stroke-width:1.5px,color:#e2e8f0
 ```
 ````
 
@@ -357,6 +364,25 @@ flowchart TB
 
 ![Diagram 2: Runtime Turn Interception & Execution Sequence (Micro View)](assets/runtime-turn-interception-micro.svg)
 
+### Visual Reference & Color Legend
+
+The micro sequence diagram utilizes a standardized semantic color hierarchy and shaded decision zones to make turn routing, feedback loops, and early-exit abort paths instantly readable:
+
+| Phase / Sequence Badge | Accent Color | Visual Role | Subsystem & File Reference |
+| :--- | :--- | :--- | :--- |
+| **Phase 1: Steps 1, 2, 5, 7, 8** | Sky Blue (`#0284c7`) | Pre-flight turn governance & audit trace | `config/ai_automation/ai_automation.sh` |
+| **Alert Exits: Steps 3, 4, 6** | Crimson Red (`#dc2626`) | Fail-closed circuit breaker & quota aborts | Sentinel Halt (Exit 1), Quota Exhaustion (Exit 2) |
+| **Phase 2: Steps 9, 10, 11** | Emerald Green (`#059669`) | Ephemeral Git worktree isolation | `bin/agent-worktree` (`.worktrees/`) |
+| **Phase 3: Steps 12–17** | Violet (`#7c3aed`) | Ephemeral subshell secret injection & AST validation | `bin/secret-run` (`~/.secrets/ai.env`) |
+| **Phase 4: Steps 18–22** | Indigo (`#4f46e5`) | Supervised background queuing & concurrency capping | `pueue` daemon (`config/pueue/pueue.yml`) |
+
+#### Shaded Decision Zones & Loop Conventions
+- 🔴 **Crimson Shaded Panels (`rgba(220, 38, 38, 0.08)`)**: Early rejection abort paths returning directly to `Agent` (Exit 1 sentinel trip, Exit 2 hourly rate limit exceeded).
+- 🔵 **Dark Slate Shaded Panel (`rgba(15, 23, 42, 0.35)`)**: Gated continuation when sentinel is clear (`flock` concurrency gating and tail scan).
+- 🟢 **Emerald Shaded Panel (`rgba(5, 150, 105, 0.12)`)**: Authorized execution branch where trace is recorded and `Turn Authorized` is returned.
+- 🔄 **Curved Accent Self-Loops (Steps 5, 13, 14)**: Local self-execution checks (atomic flock tail scan, file mode verification, AST backtick validation) executing within the component before calling external services.
+- 🌿 **Phase Container Panels (Phases 2, 3, 4)**: Themed background panels providing clear visual boundaries for worktree isolation, secret subshells, and pueue queues.
+
 ### Live Mermaid Sequence (Micro)
 
 ```mermaid
@@ -379,11 +405,11 @@ sequenceDiagram
         Breaker-->>Guard: Circuit Breaker ENGAGED (agent-stop)
         Guard-->>Agent: 🚨 REJECT: Turn blocked by sentinel (Exit 1)
     else Circuit Clear
-        Guard->>Guard: Calculate runs in last 3600s (under AUTO_AGENT_MAX_PER_HOUR)
+        Guard->>Guard: O(1) Bounded Tail Scan (last M entries) & atomic flock
         alt Rate Limit Exceeded
             Guard-->>Agent: ⏳ REJECT: Hourly limit exceeded (Exit 2)
         else Under Rate Quota
-            Guard->>Host: Append timestamp to ~/.local/state/agent-traces/traces.log (chmod 0600)
+            Guard->>Host: Append zero-fork UTC trace (chmod 0600) & sample compact
             Guard-->>Agent: ✅ Turn Authorized
         end
     end
@@ -432,11 +458,11 @@ sequenceDiagram
         Breaker-->>Guard: Circuit Breaker ENGAGED (agent-stop)
         Guard-->>Agent: 🚨 REJECT: Turn blocked by sentinel (Exit 1)
     else Circuit Clear
-        Guard->>Guard: Calculate runs in last 3600s (under AUTO_AGENT_MAX_PER_HOUR)
+        Guard->>Guard: O(1) Bounded Tail Scan (last M entries) & atomic flock
         alt Rate Limit Exceeded
             Guard-->>Agent: ⏳ REJECT: Hourly limit exceeded (Exit 2)
         else Under Rate Quota
-            Guard->>Host: Append timestamp to ~/.local/state/agent-traces/traces.log (chmod 0600)
+            Guard->>Host: Append zero-fork UTC trace (chmod 0600) & sample compact
             Guard-->>Agent: ✅ Turn Authorized
         end
     end
@@ -465,11 +491,33 @@ sequenceDiagram
 
 ### Execution Lifecycle Walkthrough
 
-1. **Pre-flight Interception**: Before generating code or calling tools, the agent triggers `agent-guard-check`. The guard checks for the presence of the `~/.agent_stop` sentinel file. If present, execution terminates immediately.
-2. **Rate Quota Enforcement**: If the circuit breaker is clear, the guard scans `~/.local/state/agent-traces/traces.log` to calculate runs within the last 3600 seconds. If `AUTO_AGENT_MAX_PER_HOUR` is reached, it exits with return code `2`.
-3. **Workspace Isolation**: Instead of making edits in the active working tree, the agent invokes `agent-worktree new <task>`. This provisions a dedicated branch under `.worktrees/<task>/` where files can be tested, staged, and benchmarked without dirtying the root directory.
-4. **Secret Injection**: Whenever database keys or model API tokens are required, `secret-run` evaluates the file permissions (`0600`/`0400`) and safely parses key-value pairs into a short-lived child subshell. The host parent shell never retains ambient secret tokens in environment memory.
-5. **Supervised Queue Hand-off**: Heavy tasks (e.g. model training, evaluation suites) are submitted via `jagent` into the pueue daemon, which schedules execution within strict pool concurrency boundaries.
+The runtime interception sequence executes across four strictly ordered phases:
+
+#### Phase 1: Turn Governance & Circuit Breakers (Steps 1–8)
+1. **Pre-flight Turn Request (Step 1)**: The autonomous agent requests turn execution through `agent-guard-check`.
+2. **Sentinel Verification (Step 2)**: The guard checks for the presence of the `~/.agent_stop` sentinel file and verifies calling EUID.
+3. **Emergency Halt Exit (Steps 3–4)**: If the sentinel exists, the circuit breaker engages, aborting execution immediately with exit code `1` (`Turn blocked by sentinel`).
+4. **Atomic Tail Rate Scan (Step 5)**: If clear, the guard acquires an atomic non-blocking lock (`flock -x -w 2 fd 200`) and runs an $O(1)$ bounded tail scan of `traces.log` (evaluating at most `AUTO_AGENT_MAX_PER_HOUR=30` records).
+5. **Rate Quota Abort (Step 6)**: If the hourly limit is exceeded, the guard releases the lock and aborts with exit code `2` (`Hourly limit exceeded`).
+6. **Telemetry & Authorization (Steps 7–8)**: If under quota, an audit record with an in-process zero-fork ISO-8601 UTC timestamp is appended (mode `0600`), compaction is sampled, and `Turn Authorized (Exit 0)` is returned.
+
+#### Phase 2: Workspace Isolation via Git Worktrees (Steps 9–11)
+7. **Worktree Provisioning (Step 9)**: To prevent working tree collisions on `main`, the agent invokes `agent-worktree new <task>`.
+8. **Host Branch Creation (Step 10)**: The CLI triggers `git worktree add .worktrees/<task> -b agent/<task>` on the host.
+9. **Isolated Sandbox Ready (Step 11)**: The isolated checkout is verified, allowing the agent to mutate, build, and test code without dirtying the root repository.
+
+#### Phase 3: Ephemeral Secret Injection (Steps 12–17)
+10. **Targeted Invocation (Step 12)**: Whenever API tokens or sensitive credentials are required, the agent calls `secret-run --env-file ~/.secrets/ai.env -- <command>`.
+11. **Permission Validation (Step 13)**: `secret-run` inspects secret file permissions, failing closed if permissions exceed `0600` or `0400`.
+12. **Safe AST Parsing (Step 14)**: The file is parsed via bash AST inspection, rejecting command substitution (`$()`), backticks, and subshell escapes.
+13. **Ephemeral Subshell Execution (Steps 15–16)**: Secrets are exported strictly within a short-lived child subshell that terminates immediately upon command completion.
+14. **Clean Exit (Step 17)**: Output is returned to the agent while the host parent environment retains zero ambient secrets.
+
+#### Phase 4: Supervised Task Queuing & Concurrency (Steps 18–22)
+15. **Job Dispatch (Step 18)**: Long-running or heavy workloads are submitted via `jagent <command>`.
+16. **Guard Verification (Step 19)**: The wrapper validates `agent-guard-check` for pool group `agents`.
+17. **Host Scheduling (Step 20)**: The task is queued into the `pueue` daemon, capped at concurrency 4 for agents (or 2 for experiments).
+18. **Asynchronous Execution (Steps 21–22)**: The task runs in the background while the task ID is returned to the agent for non-blocking monitoring via `jls` and `jfollow`.
 
 ---
 
@@ -477,8 +525,8 @@ sequenceDiagram
 
 | Subsystem | Key Files | Invariants Enforced | Operational Role |
 | :--- | :--- | :--- | :--- |
-| **Circuit Breaker** | `config/ai_automation/ai_automation.sh` | Sentinel file presence immediately aborts all harnesses. Resumption requires matching EUID. | Emergency stop & hourly execution limits |
-| **Telemetry** | `~/.local/state/agent-traces/traces.log` | File permissions strictly constrained to `0600`. | Immutable invocation logs & rate metrics |
+| **Circuit Breaker** | `config/ai_automation/ai_automation.sh` | Sentinel file presence immediately aborts all harnesses. Resumption requires matching EUID. $O(1)$ bounded tail scan & atomic `flock` concurrency gating. | Emergency stop & hourly execution limits |
+| **Telemetry** | `~/.local/state/agent-traces/traces.log` | File permissions strictly constrained to `0600`. Auto-compacted via `AUTO_AGENT_TRACE_MAX_LINES`. | Immutable invocation logs & rate metrics |
 | **Secret Runner** | `bin/secret-run` | Zero ambient secrets in parent shell. Insecure permissions (`>0600`) rejected. | Ephemeral child subshell injection |
 | **Worktree Manager** | `bin/agent-worktree`, `config/bash/aliases.d/ai.sh` | Main branch protected; all agent branches isolated to `.worktrees/`. | Non-destructive filesystem sandboxing |
 | **Task Queue** | `config/pueue/pueue.yml`, `config/bash/aliases.d/ai.sh` | Concurrency capped at 4 for agents, 2 for experiments. | Background execution & resource budgeting |

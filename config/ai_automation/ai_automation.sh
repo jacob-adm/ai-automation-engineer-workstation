@@ -23,6 +23,9 @@
 # Minimum required cooldown between back-to-back automated loops
 : "${AUTO_AGENT_COOLDOWN_SEC:=60}"
 
+# Maximum lines retained in trace log before auto-compaction (prevents unbounded disk bloat)
+: "${AUTO_AGENT_TRACE_MAX_LINES:=10000}"
+
 # ------------------------------------------------------------------------------
 # 2. Paths & State Sentinels
 # ------------------------------------------------------------------------------
@@ -88,12 +91,56 @@ agent-status() {
         local count
         count=$(wc -l < "$log_file" 2>/dev/null || echo 0)
         echo "Total Logged Runs: $count"
+
+        # Calculate active runs within the trailing 3600 seconds
+        local now
+        if [ -n "${EPOCHSECONDS:-}" ]; then
+            now="$EPOCHSECONDS"
+        elif printf -v now '%(%s)T' -1 2>/dev/null; then
+            :
+        else
+            now=$(date +%s)
+        fi
+        local one_hour_ago=$(( now - 3600 ))
+        local recent_runs=0
+        while IFS= read -r line; do
+            local ts="${line%% *}"
+            if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -ge "$one_hour_ago" ]; then
+                recent_runs=$(( recent_runs + 1 ))
+            fi
+        done < <(tail -n "$AUTO_AGENT_MAX_PER_HOUR" "$log_file" 2>/dev/null)
+        echo "Runs in Last Hour: $recent_runs / $AUTO_AGENT_MAX_PER_HOUR"
     fi
     echo -e "\033[1;36m==================================\033[0m"
 }
 
 # ------------------------------------------------------------------------------
-# 6. Pre-flight Guard Check & Sliding Window Rate Limiting
+# 6. Trace Telemetry Log Maintenance & Compaction
+# ------------------------------------------------------------------------------
+# Prunes historical trace records exceeding retention limits while preserving 0600 mode
+agent-traces-compact() {
+    local max_lines="${1:-${AUTO_AGENT_TRACE_MAX_LINES:-10000}}"
+    local log_file="$AUTO_AGENT_TRACE_DIR/traces.log"
+
+    if [ -f "$log_file" ] && [ "$max_lines" -gt 0 ]; then
+        local total_lines
+        total_lines=$(wc -l < "$log_file" 2>/dev/null || echo 0)
+        if [ "$total_lines" -gt "$max_lines" ]; then
+            local keep_lines=$(( max_lines / 2 ))
+            local tmp_log="${log_file}.tmp.$$"
+            if tail -n "$keep_lines" "$log_file" > "$tmp_log" 2>/dev/null; then
+                chmod 600 "$tmp_log" 2>/dev/null || true
+                mv -f "$tmp_log" "$log_file" 2>/dev/null || rm -f "$tmp_log"
+                echo "Compacted $log_file: retained $keep_lines of $total_lines records."
+            else
+                rm -f "$tmp_log" 2>/dev/null || true
+            fi
+        fi
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# 7. Pre-flight Guard Check & Sliding Window Rate Limiting
 # ------------------------------------------------------------------------------
 # Validates whether a requested execution turn is authorized under active policies
 agent-guard-check() {
@@ -106,33 +153,78 @@ agent-guard-check() {
     fi
 
     local log_file="$AUTO_AGENT_TRACE_DIR/traces.log"
+
+    # High-performance in-process timestamp resolution (Bash builtins when available)
     local now
-    now=$(date +%s)
+    if [ -n "${EPOCHSECONDS:-}" ]; then
+        now="$EPOCHSECONDS"
+    elif printf -v now '%(%s)T' -1 2>/dev/null; then
+        :
+    else
+        now=$(date +%s)
+    fi
     local one_hour_ago=$(( now - 3600 ))
 
-    # Step 2: Compute sliding-window invocation count over the preceding 3600 seconds
-    if [ -f "$log_file" ]; then
-        local recent_runs=0
-        while IFS= read -r line; do
-            local ts="${line%% *}"
-            if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -ge "$one_hour_ago" ]; then
-                recent_runs=$(( recent_runs + 1 ))
-            fi
-        done < "$log_file"
-
-        # Step 3: Enforce hourly quota ceiling
-        if [ "$recent_runs" -ge "$AUTO_AGENT_MAX_PER_HOUR" ]; then
-            echo -e "\033[01;31m[GUARD REJECTED]\033[00m Rate limit exceeded: $recent_runs runs in last hour (max $AUTO_AGENT_MAX_PER_HOUR)." >&2
-            return 2
-        fi
-    fi
-
-    # Step 4: Record timestamped execution trace with strict 0600 permissions
+    # Ensure telemetry trace file exists with strict 0600 permissions
     if [ ! -f "$log_file" ]; then
         touch "$log_file"
         chmod 600 "$log_file" 2>/dev/null || true
     fi
-    echo "$now $(date -u +"%Y-%m-%dT%H:%M:%SZ") $caller" >> "$log_file"
+
+    # Step 2: Atomic concurrency protection via flock (when available on Linux)
+    local lock_fd=0
+    if command -v flock >/dev/null 2>&1; then
+        exec 200>>"$log_file"
+        if flock -x -w 2 200 2>/dev/null; then
+            lock_fd=200
+        fi
+    fi
+
+    # Step 3: High-Performance O(1) Bounded Tail Scan
+    # Traces are ordered chronologically; inspecting at most AUTO_AGENT_MAX_PER_HOUR
+    # records from the tail guarantees constant-time validation regardless of log file size.
+    local recent_runs=0
+    while IFS= read -r line; do
+        local ts="${line%% *}"
+        if [[ "$ts" =~ ^[0-9]+$ ]] && [ "$ts" -ge "$one_hour_ago" ]; then
+            recent_runs=$(( recent_runs + 1 ))
+        fi
+    done < <(tail -n "$AUTO_AGENT_MAX_PER_HOUR" "$log_file" 2>/dev/null)
+
+    # Step 4: Enforce hourly quota ceiling
+    if [ "$recent_runs" -ge "$AUTO_AGENT_MAX_PER_HOUR" ]; then
+        if [ "$lock_fd" -eq 200 ]; then
+            flock -u 200 2>/dev/null || true
+            exec 200>&-
+        fi
+        echo -e "\033[01;31m[GUARD REJECTED]\033[00m Rate limit exceeded: $recent_runs runs in last hour (max $AUTO_AGENT_MAX_PER_HOUR)." >&2
+        return 2
+    fi
+
+    # Step 5: Record timestamped execution trace with strict 0600 permissions
+    local iso_ts
+    if printf -v iso_ts '%(%Y-%m-%dT%H:%M:%SZ)T' -1 2>/dev/null; then
+        :
+    else
+        iso_ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    fi
+    echo "$now $iso_ts $caller" >> "$log_file"
+
+    # Step 6: Periodic automatic trace compaction to prevent unbounded disk bloat
+    if [ "${AUTO_AGENT_TRACE_MAX_LINES:-0}" -gt 0 ]; then
+        : "${_AGENT_TURN_INVOCATION_COUNT:=0}"
+        _AGENT_TURN_INVOCATION_COUNT=$(( _AGENT_TURN_INVOCATION_COUNT + 1 ))
+        if [ $(( _AGENT_TURN_INVOCATION_COUNT % 50 )) -eq 0 ]; then
+            agent-traces-compact "$AUTO_AGENT_TRACE_MAX_LINES" >/dev/null 2>&1 || true
+        fi
+    fi
+
+    # Release file lock if acquired
+    if [ "$lock_fd" -eq 200 ]; then
+        flock -u 200 2>/dev/null || true
+        exec 200>&-
+    fi
+
     return 0
 }
 

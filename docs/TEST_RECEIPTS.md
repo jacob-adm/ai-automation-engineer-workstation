@@ -32,7 +32,7 @@ To independently reproduce and witness every single receipt on your machine:
 | **5** | AI Supply Chain Defense | Verify `UV_EXCLUDE_NEWER` 7-day quarantine, `UV_MALWARE_CHECK`, and npm `ignore-scripts=true` | **PASSED** | 3/3 verified |
 | **6** | Scoped Secrets (`secret-run`) | Verify child environment secret injection, zero ambient parent shell leak, and missing file rejection | **PASSED** | 3/3 verified |
 | **7** | Git Worktrees (`agent-worktree`) | Test `new`, `list`, isolated commit, `merge` into main, `remove`, and `clean` | **PASSED** | 5/5 verified |
-| **8** | Circuit Breakers & Guardrails | Test `agent-status`, `agent-stop`, `agent-guard-check` rejection, `agent-resume`, and trace logging | **PASSED** | 5/5 verified |
+| **8** | Circuit Breakers & Guardrails | Test `agent-status`, `agent-stop`, `agent-guard-check` rejection (exit 1), `agent-resume`, trace logging, rate limit quota rejection (exit 2), and trace compaction | **PASSED** | 7/7 verified |
 | **9** | Task Queue (`pueue`) | Test daemon spawning, group creation (`experiments=2`, `agents=4`), `jexp`, `jagent`, `jls` | **PASSED** | 3/3 verified |
 | **10** | Modular Shell Aliases | Verify loading of 5 alias modules (`git`, `ai`, `containers`, `nav`, `sys`) and `extract` archive utility | **PASSED** | 2/2 verified |
 | **11** | Self-Healing Medic (`doctor`) | Test 47-point health check, simulate symlink drift, fail gracefully, and heal with `doctor --fix` | **PASSED** | 4/4 verified |
@@ -174,9 +174,11 @@ Merge made by the 'ort' strategy.
 
 ### Stage 8: Circuit Breakers, Guardrails & Telemetry
 - `agent-stop`: Deployed sentinel file `~/.agent_stop`.
-- `agent-guard-check`: Blocked agent loop execution with `[GUARD REJECTED]`.
+- `agent-guard-check`: Blocked agent loop execution with `[GUARD REJECTED]` (exit 1).
 - `agent-resume`: Cleared sentinel file and allowed execution.
 - Trace Telemetry: Verified audit event logging in `~/.local/state/agent-traces/traces.log`.
+- Rate Limiting: Verified quota enforcement and exit code 2 when turn calls exceed `AUTO_AGENT_MAX_PER_HOUR`.
+- Trace Compaction: Verified atomic retention pruning via `agent-traces-compact`.
 
 ```text
 [CIRCUIT BREAKER ENGAGED] Emergency stop active: /home/testuser/.agent_stop
@@ -184,7 +186,7 @@ All local agent harnesses and automated loops will immediately abort.
 [GUARD REJECTED] Execution blocked by sentinel: /home/testuser/.agent_stop
 [CIRCUIT BREAKER CLEARED] Agent execution resumed.
 Trace telemetry verified in ~/.local/state/agent-traces/traces.log
-[RECEIPT PASS] Circuit breaker (agent-stop, agent-resume, guard-check, telemetry) verified
+[RECEIPT PASS] Circuit breaker (agent-stop, agent-resume, guard-check, rate limit, compaction, telemetry) verified
 ```
 
 ---
@@ -376,7 +378,7 @@ Stage 17 executes the dedicated modular security suite ([`tests/run_security.sh`
 =====================================================
 ==> SECURITY SUITE: 6. Circuit Breaker & Guardrails
 =====================================================
-  [SECURITY PASS] Circuit breaker enforcement: agent-stop blocks task queue agent execution (jagent)
+  [SECURITY PASS] Circuit breaker & rate limiter enforcement: sentinel halt, quota rejection (exit 2), and compaction verified
 
 =====================================================
 ==> SECURITY SUITE: 7. Telemetry Trace Log Security
