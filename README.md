@@ -7,7 +7,7 @@ Includes automated package bootstrapping, supply chain quarantine, credential is
 > 📚 **Complete Documentation Suite:**
 > - 📖 **[The AI Automation Engineer's Field Manual](MANUAL.md)**: Deep architectural guide explaining agent runtime layers, threat models, supply chain defense, and systems engineering for autonomous agents.
 > - 🚀 **[The Quick Start Guide](QUICK-START.md)**: Hands-on 30-minute walkthrough, interactive playground missions, and real-world recipes for controlling agents.
-> - 🧪 **[Empirical Test Receipts](TEST_RECEIPTS.md)**: 16-stage container verification proofs and assertion records.
+> - 🧪 **[Empirical Test Receipts](TEST_RECEIPTS.md)**: 17-stage container verification proofs and assertion records.
 
 ---
 
@@ -24,6 +24,7 @@ Includes automated package bootstrapping, supply chain quarantine, credential is
   ```bash
   secret-run -- python eval_model.py
   secret-run --env-file ~/.secrets/custom.env -- pytest tests/
+  secret-run --strict -- python untrusted_script.py  # Suppresses ambient ./.env in untrusted repos
   ```
 - **`direnv` Support**: Includes `.envrc.template` to automatically bind project-specific tokens strictly when `cd`-ing into that project.
 - **Machine Overrides**: Use `~/.dotfiles.local` (mode `0600`) for private machine-local configurations.
@@ -68,7 +69,7 @@ Run model evals, batch inferences, and agent test suites in the background with 
 
 ### 6. Self-Healing Environment Diagnostic (`doctor`)
 Built on "The Spilled Coffee Principle"—if a laptop is destroyed or an environment drifts, you should be back to 100% operational state instantly with zero manual guesswork:
-- **`doctor`**: Diagnostic suite verifying 20+ symlinks, core and AI packages, Docker daemon status, git identity, agent circuit breaker state, and modular alias directories.
+- **`doctor`**: Diagnostic suite verifying 48 system health checks across 31 symlinks, core and AI packages, Docker daemon status, git identity, agent circuit breaker state, MCP boundaries, secret permissions, and binary checksum tooling.
 - **`doctor --fix`**: Automatically repairs broken symlinks, launches self-healing sub-routines, and restores configuration integrity.
 
 ### 7. Model Context Protocol (MCP) Diagnostics & Configs
@@ -77,11 +78,13 @@ Canonical vendor-agnostic MCP configuration for AI harnesses (Antigravity, Claud
 - **`check-mcp-logs`** (`mcplogs`): Centralized viewer for MCP server logs across harnesses (`check-mcp-logs --tail`, `check-mcp-logs --clear`).
 
 ### 8. Developer Automation Workflows
+- **`sysinfo`**: Instant hardware, memory, GPU, disk, and networking diagnostic summary in a clean box table.
 - **`ensure-docker`** (`edocker`): Ubuntu/Debian native self-healing Docker service validator. Checks socket permissions, group memberships, and initiates systemd/service restart if unresponsive.
-- **`pr-checkout`**: Fast PR fetcher with isolated worktree integration:
+- **`pr-checkout`**: Fast PR & branch fetcher with isolated worktree integration (supports GitHub PR numbers and Bitbucket branches):
   ```bash
   pr-checkout 42             # Checkout PR #42 in current working tree
   pr-checkout --worktree 42  # Fetch and isolate PR #42 into .worktrees/pr-42
+  pr-checkout feature/auth   # Checkout remote branch directly
   ```
 - **`gha-failed-logs`**: Fetches and inspects failed GitHub Actions step logs directly in the terminal without opening a browser.
 
@@ -121,7 +124,7 @@ Executes:
 1. `git pull --rebase` to fetch upstream updates.
 2. `./scripts/links.sh` to refresh all symlinks.
 3. `uv self update` to keep Python tooling current.
-4. `doctor --fix` to verify all 20+ checks and heal any broken configurations automatically.
+4. `doctor --fix` to verify all 48 checks and heal any broken configurations automatically.
 
 ### 12. ML, GPU & Python Ergonomics
 - **`activate_venv`**: Auto-detects and activates `.venv` in the current working directory or git repo root.
@@ -143,10 +146,13 @@ Executes:
 ## Directory Structure
 
 ```text
-dot-files/
+ai-automation-engineer-workstation/
 ├── .gitignore
 ├── README.md
 ├── QUICK-START.md                 # Quick Start onboarding guide & walkthrough
+├── MANUAL.md                      # The AI Automation Engineer's Field Manual
+├── TEST_RECEIPTS.md               # Empirical container verification receipts
+├── CONTRIBUTING.md                # Engineering standards & PR contribution guide
 ├── install.sh                     # Modular installer (profiles: full, cloud, minimal)
 ├── update.sh                      # Automated updater and self-healing synchronizer
 ├── bin/
@@ -199,12 +205,14 @@ dot-files/
 │       └── .vimrc                 # Vim settings with hybrid line numbers
 ├── scripts/
 │   ├── packages.sh                # Automated apt package and pueue binary installer
-│   └── links.sh                   # Symlink manager with automated timestamped backups
+│   ├── links.sh                   # Symlink manager with automated timestamped backups
+│   └── update-checksums.sh        # Pinned binary SHA256 integrity auditor & updater
 └── tests/
     ├── Dockerfile                 # Clean Ubuntu test container
     ├── run_tests.sh               # Test runner
+    ├── run_security.sh            # Dedicated modular security test runner
     ├── sandbox.sh                 # Interactive zero-risk Docker sandbox test drive
-    └── verify_container.sh        # 16-step automated verification suite
+    └── verify_container.sh        # 17-stage automated verification suite
 ```
 
 ---
@@ -279,29 +287,30 @@ Explore the dotfiles and all tools interactively in an isolated Ubuntu container
 ```
 
 ### 📋 Full Verification Test Suite
-Run the full end-to-end 16-stage verification suite in an isolated Ubuntu container:
+Run the full end-to-end 17-stage verification suite in an isolated Ubuntu container:
 
 ```bash
 ./tests/run_tests.sh
 ```
 
 The automated test verifies:
-1. Non-interactive package installation across all toolchains (`build-essential`, `python3-pip`, `direnv`, etc.).
-2. Availability of all tools (`git`, `tmux`, `vim`, `rg`, `fzf`, `direnv`, `zoxide`, `batcat`, `fdfind`, `uv`, `pueue`).
-3. Symlink creation for all dotfiles, configurations, modular aliases, and `bin/` tools (20+ links).
-4. Shell syntax and interactive bash startup without errors.
-5. Supply chain quarantine environment variables (`UV_EXCLUDE_NEWER`, `UV_MALWARE_CHECK`).
-6. Agent circuit breaker triggers (`agent-stop`, `agent-resume`, `agent-guard-check`).
-7. Scoped secrets execution via `secret-run`.
-8. Git worktree creation, commits, merging, and pruning via `agent-worktree`.
-9. Task queue daemon operation and background job execution (`pueue`).
-10. Full installer idempotency and timestamped backup restoration.
-11. Modular aliases loading across git, container, ai, navigation, and system domains.
-12. Self-healing environment diagnostic (`doctor`), drift detection, and automatic restoration (`doctor --fix`).
-13. Model Context Protocol (`mcp.json` JSON validation, `check-mcp-logs`).
-14. Pull request checkout interface (`pr-checkout --help`) and Docker validator (`ensure-docker`).
-15. AI Coding Agent configurations (`CLAUDE.md`, `settings.json`, `opencode.json` schema validation & `fileExclusions` boundaries).
-16. Automated update workflow (`update.sh` / `dotfiles-update` self-healing cycle).
+1. **Installer Execution & Idempotency**: Fresh install, re-run idempotency, backup archiving.
+2. **Core & AI Developer Packages**: Package availability (`build-essential`, `python3-pip`, `direnv`, `zoxide`, `batcat`, `fdfind`, `rg`, `fzf`, `uv`, `pueue`).
+3. **Symlink Infrastructure**: 31 canonical links across shell, editor, agent configs, and CLI binaries.
+4. **Shell Syntax & Startup**: Syntax compilation check and interactive bash startup without errors.
+5. **AI Supply Chain Defense & tmpfs**: `UV_EXCLUDE_NEWER`, `UV_MALWARE_CHECK`, npm `ignore-scripts=true`, and RAM-backed `TMPDIR`.
+6. **Scoped Secrets Runner**: `secret-run` subshell isolation, mode `0600` fail-closed permission checks, strict AST parsing, and `--strict` untrusted-repo protection.
+7. **Isolated Git Worktree Manager**: `agent-worktree` branch creation, concurrent commits, rebase merging, and cleanup.
+8. **Circuit Breakers & Telemetry**: `agent-stop`, `agent-resume`, `agent-guard-check`, hourly limits, and mode `0600` log telemetry.
+9. **Task Queue Supervision**: `pueue` daemon autostart, runtime state queues (`experiments`, `agents`), and concurrency capping.
+10. **Modular Shell Aliases**: `~/.bash_aliases.d/` across ai, containers, git, nav, and sys domains.
+11. **Self-Healing Diagnostic Medic**: `doctor` 48-point verification, drift detection, and `doctor --fix` automatic restoration.
+12. **Model Context Protocol (MCP)**: `mcp.json` JSON schema compliance, bounded filesystem access, and `check-mcp-logs`.
+13. **Developer CLI Utilities**: `sysinfo`, `pr-checkout` with isolated worktree support, `ensure-docker` daemon healing, and `gha-failed-logs`.
+14. **AI Coding Agent Configurations**: `CLAUDE.md`, `settings.json`, `opencode.json` schema validation, and sensitive `fileExclusions` boundaries.
+15. **Practical Walkthrough Validation**: 60-second web dashboard creation, execution, and local HTTP verification.
+16. **Automated Living System Updates**: `dotfiles-update` / `update.sh` rebase, link refresh, `uv self update`, and doctor repair cycle.
+17. **Security Invariants & Defenses**: Pinned SHA256 checksums, removal of `curl | sh` pipes, root refusal, and full modular suite via `tests/run_security.sh`.
 
 ---
 
