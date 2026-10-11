@@ -219,6 +219,40 @@ ai-automation-engineer-workstation/
 
 ## Installation
 
+### Quick Decision Matrix
+
+1. **Zero-risk test drive without touching your host machine (macOS / Linux / Windows WSL2)**:
+   - **Prerequisites**: `git`, `bash`, `docker`
+   - **Command**:
+     ```bash
+     git clone git@bitbucket.org:jadm11/ai-automation-engineer-workstation.git
+     cd ai-automation-engineer-workstation
+     ./tests/sandbox.sh
+     ```
+
+2. **Dedicated Ubuntu workstation or VM**:
+   - **Prerequisites**: Fresh Ubuntu install (22.04 / 24.04 LTS), regular user with `sudo`, `git`
+   - **Command**:
+     ```bash
+     git clone git@bitbucket.org:jadm11/ai-automation-engineer-workstation.git
+     cd ai-automation-engineer-workstation
+     ./install.sh
+     ```
+
+3. **Cloud GPU Pod (RunPod, Lambda Labs, Hetzner as `root`)**:
+   - **Prerequisites**: Ubuntu pod with network access
+   - **Command**:
+     ```bash
+     ./install.sh --profile cloud
+     ```
+
+4. **Minimal dotfile symlinks only (macOS or Linux without root/apt)**:
+   - **Prerequisites**: `git`, `bash`
+   - **Command**:
+     ```bash
+     ./install.sh --profile minimal
+     ```
+
 ### Standard Setup
 
 ```bash
