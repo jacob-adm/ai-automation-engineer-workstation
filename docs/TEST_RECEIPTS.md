@@ -38,7 +38,7 @@ To independently reproduce and witness every single receipt on your machine:
 | **11** | Self-Healing Medic (`doctor`) | Test 47-point health check, simulate symlink drift, fail gracefully, and heal with `doctor --fix` | **PASSED** | 4/4 verified |
 | **12** | Model Context Protocol (MCP) | Validate `mcp.json` schema, server definitions, and test `check-mcp-logs` read and clear | **PASSED** | 4/4 verified |
 | **13** | Developer CLI Tools | Test `sysinfo`, `pr-checkout --help`, and `ensure-docker` graceful fallback | **PASSED** | 3/3 verified |
-| **14** | AI Agent Configurations | Validate `CLAUDE.md`, `settings.json`, `opencode.json`, and `fileExclusions` (`.worktrees/**`, `*.env`) | **PASSED** | 4/4 verified |
+| **14** | AI Agent Configurations | Validate `CLAUDE.md`, `settings.json`, `opencode.json`, and `permissions.deny` (`.worktrees/**`, `*.env`) | **PASSED** | 4/4 verified |
 | **15** | ELI10 60-Second Web Dashboard | Create HTML dashboard, serve on port 8765, curl via HTTP, assert body, and clean up | **PASSED** | 1/1 verified |
 | **16** | Living System Update | Execute `dotfiles-update` (`update.sh`) full cycle, refresh links, and run `doctor --fix` | **PASSED** | 1/1 verified |
 | **17** | Security Invariants & Defenses | Verify zero `curl \| sh`, pinned SHA256 checksums, `secret-run` fail-closed & ACE block, bounded MCP scope, install `--dry-run`, circuit-breaker task blocking, and telemetry `0600` permissions | **PASSED** | 9/9 verified |
@@ -282,7 +282,7 @@ Running doctor --fix...
 [RECEIPT PASS] Claude Code settings.json is valid JSON schema
 [RECEIPT PASS] OpenCode opencode.json is valid JSON schema
 [RECEIPT PASS] Global agent instructions (CLAUDE.md) teach harness tools (secret-run, worktree, pueue, doctor)
-[RECEIPT PASS] Agent fileExclusions contain .worktrees/**, *.env, and .venv/** boundaries
+[RECEIPT PASS] Claude Code permissions.deny blocks ~/.secrets/**, *.env, .worktrees/**, and .venv/** reads
 ```
 
 ---

@@ -472,14 +472,16 @@ else
     fail "Global agent instructions missing required harness tools"
 fi
 
-# Verify strict file exclusions for security & token control
-exclusions="$(jq -r '.fileExclusions[]' "$HOME/.claude/settings.json")"
-if echo "$exclusions" | grep -q "^\.worktrees/\*\*$" && \
-   echo "$exclusions" | grep -q "\*\.env" && \
-   echo "$exclusions" | grep -q "^\.venv/\*\*$"; then
-    pass "Agent fileExclusions contain .worktrees/**, *.env, and .venv/** boundaries"
+# Verify Claude Code permission deny rules for security & token control
+deny="$(jq -r '.permissions.deny[]' "$HOME/.claude/settings.json")"
+if echo "$deny" | grep -qxF 'Read(~/.secrets/**)' && \
+   echo "$deny" | grep -qxF 'Read(**/*.env)' && \
+   echo "$deny" | grep -qxF 'Read(./.worktrees/**)' && \
+   echo "$deny" | grep -qxF 'Read(**/.venv/**)' && \
+   ! jq -e 'has("fileExclusions") or has("autoApprovePatterns") or has("customInstructions")' "$HOME/.claude/settings.json" >/dev/null; then
+    pass "Claude Code permissions.deny blocks ~/.secrets/**, *.env, .worktrees/**, and .venv/** reads"
 else
-    fail "Agent fileExclusions missing critical safety boundaries"
+    fail "Claude Code permissions.deny missing critical safety boundaries (or unsupported keys present)"
 fi
 
 header "15. ELI10 Practical Walkthrough: 60-Second Web Dashboard Challenge"

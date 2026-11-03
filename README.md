@@ -104,18 +104,19 @@ Organized by functional domains instead of a monolith:
 ### 10. Closed-Loop AI Agent Instructions & Boundaries
 When you add local CLI tools to your dotfiles, teach your coding agents (Claude Code, OpenCode, Antigravity, Codex) about them in the **same repository**:
 - **`config/agents/AGENTS.md`**: Master instructions symlinked to `~/.claude/CLAUDE.md` and referenced by `~/.config/opencode/opencode.json`. Teaches agents about `secret-run`, `agent-worktree`, `pueue`, `doctor`, and the 7-day `uv` quarantine.
-- **`config/claude/settings.json`**: Global agent configuration enforcing `fileExclusions` to protect context windows and prevent credential leakage:
+- **`config/claude/settings.json`**: Global Claude Code `permissions.deny` rules that block the Read, Grep, and Glob tools from secrets and bulky directories (protecting both credentials and the context window):
   ```json
-  "fileExclusions": [
-    ".worktrees/**",
-    ".venv/**",
-    "__pycache__/**",
-    ".git/**",
-    "node_modules/**",
-    ".pueue/**",
-    "~/.secrets/**",
-    "**/*.env"
-  ]
+  "permissions": {
+    "deny": [
+      "Read(~/.secrets/**)",
+      "Read(**/*.env)",
+      "Read(**/*.env.*)",
+      "Read(./.worktrees/**)",
+      "Read(**/.venv/**)",
+      "Read(**/node_modules/**)",
+      "Read(**/.git/**)"
+    ]
+  }
   ```
 - **`config/opencode/opencode.json`**: Single source of truth referencing the shared `CLAUDE.md` and exclusions.
 
@@ -188,7 +189,7 @@ ai-automation-engineer-workstation/
 │   │   ├── .bash_profile          # Login profile
 │   │   └── .profile               # Fallback profile
 │   ├── claude/
-│   │   └── settings.json          # Claude Code global settings & file exclusions
+│   │   └── settings.json          # Claude Code global settings & permission deny rules
 │   ├── git/
 │   │   ├── .gitconfig             # Git defaults and aliases
 │   │   └── .gitignore_global      # Global ignores (.worktrees, .env, swap, OS files)
@@ -347,7 +348,7 @@ The automated test verifies:
 11. **Self-Healing Diagnostic Medic**: `doctor` 48-point verification, drift detection, and `doctor --fix` automatic restoration.
 12. **Model Context Protocol (MCP)**: `mcp.json` JSON schema compliance, bounded filesystem access, and `check-mcp-logs`.
 13. **Developer CLI Utilities**: `sysinfo`, `pr-checkout` with isolated worktree support, `ensure-docker` daemon healing, and `gha-failed-logs`.
-14. **AI Coding Agent Configurations**: `CLAUDE.md`, `settings.json`, `opencode.json` schema validation, and sensitive `fileExclusions` boundaries.
+14. **AI Coding Agent Configurations**: `CLAUDE.md`, `settings.json`, `opencode.json` schema validation, and sensitive `permissions.deny` boundaries.
 15. **Practical Walkthrough Validation**: 60-second web dashboard creation, execution, and local HTTP verification.
 16. **Automated Living System Updates**: `dotfiles-update` / `update.sh` rebase, link refresh, `uv self update`, and doctor repair cycle.
 17. **Security Invariants & Defenses**: Pinned SHA256 checksums, removal of `curl | sh` pipes, root refusal, and full modular suite via `tests/run_security.sh`.
