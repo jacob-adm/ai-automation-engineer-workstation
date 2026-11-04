@@ -515,15 +515,19 @@ LLM context windows are finite and costly. When an AI coding agent indexes a wor
    * What boundaries must never be crossed.
 2. **Strict Context Boundaries ([`config/claude/settings.json`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/claude/settings.json))**:
    ```json
-   "fileExclusions": [
-     ".worktrees/**",
-     "**/*.env",
-     "**/*.env.*",
-     ".venv/**",
-     "**/.venv/**",
-     "**/node_modules/**"
-   ]
+   "permissions": {
+     "deny": [
+       "Read(~/.secrets/**)",
+       "Read(**/*.env)",
+       "Read(**/*.env.*)",
+       "Read(./.worktrees/**)",
+       "Read(**/.venv/**)",
+       "Read(**/node_modules/**)",
+       "Read(**/.git/**)"
+     ]
+   }
    ```
+   These rules cover Claude Code's file tools. They do not stop a shell command such as `cat .env`, so secret isolation still depends on `secret-run` keeping keys out of the environment.
 3. **Model Context Protocol Standards ([`config/mcp/mcp.json`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/mcp/mcp.json))**:  
    Pre-configures vendor-neutral MCP servers (`filesystem`, `git`, `fetch`) and pairs them with [`bin/check-mcp-logs`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/bin/check-mcp-logs) (`mcplogs`) to inspect JSON-RPC communication errors across harnesses in real time.
 
