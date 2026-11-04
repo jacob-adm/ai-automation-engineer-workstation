@@ -1,21 +1,23 @@
 {
-  "customInstructions": "You are operating in an Ubuntu AI Engineering & Automation environment. Refer to ~/.claude/CLAUDE.md for system tooling (secret-run, agent-worktree, pueue, doctor) and coding standards. Keep responses concise, direct, and verify code with tests.",
-  "fileExclusions": [
-    ".worktrees/**",
-    ".venv/**",
-    "__pycache__/**",
-    ".git/**",
-    "node_modules/**",
-    ".pueue/**",
-    "~/.secrets/**",
-    "**/*.env",
-    "**/*.env.*",
-    "**/.dotfiles.local"
-  ],
-  "autoApprovePatterns": [
-    "**/*.md",
-    "**/*.txt",
-    "**/tests/**",
-    "**/test_*.py"
-  ]
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(~/.secrets/**)",
+      "Read(**/*.env)",
+      "Read(**/*.env.*)",
+      "Read(**/.dotfiles.local)",
+      "Read(./.worktrees/**)",
+      "Read(**/.venv/**)",
+      "Read(**/__pycache__/**)",
+      "Read(**/.git/**)",
+      "Read(**/node_modules/**)",
+      "Read(**/.pueue/**)"
+    ],
+    "allow": [
+      "Edit(**/*.md)",
+      "Edit(**/*.txt)",
+      "Edit(**/tests/**)",
+      "Edit(**/test_*.py)"
+    ]
+  }
 }
