@@ -232,7 +232,7 @@ ai-automation-engineer-workstation/
    - **Prerequisites**: `git`, `bash`, `docker`
    - **Command**:
      ```bash
-     git clone git@bitbucket.org:jadm11/ai-automation-engineer-workstation.git
+     git clone git@github.com:jacob-adm/ai-automation-engineer-workstation.git
      cd ai-automation-engineer-workstation
      ./tests/sandbox.sh
      ```
@@ -241,7 +241,7 @@ ai-automation-engineer-workstation/
    - **Prerequisites**: Fresh Ubuntu install (22.04 / 24.04 LTS), regular user with `sudo`, `git`
    - **Command**:
      ```bash
-     git clone git@bitbucket.org:jadm11/ai-automation-engineer-workstation.git
+     git clone git@github.com:jacob-adm/ai-automation-engineer-workstation.git
      cd ai-automation-engineer-workstation
      ./install.sh
      ```
@@ -264,10 +264,10 @@ ai-automation-engineer-workstation/
 
 ```bash
 # Clone via HTTPS:
-git clone https://bitbucket.org/jadm11/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
+git clone https://github.com/jacob-adm/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
 
 # Or clone via SSH:
-git clone git@bitbucket.org:jadm11/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
+git clone git@github.com:jacob-adm/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
 
 cd ~/ai-automation-engineer-workstation
 ./install.sh
@@ -305,7 +305,7 @@ This repository follows a **Trunk-Based Development** model enhanced with **Git 
 1. Create an isolated worktree or branch: `agent-worktree new my-feature` (or `git checkout -b feature/my-feature`).
 2. Run the test suite: `./tests/run_tests.sh`.
 3. Push to remote: `git push -u origin feature/my-feature`.
-4. Open a Pull Request on Bitbucket targeting `main`.
+4. Open a Pull Request on GitHub targeting `main`.
 
 ### Reviewing a PR in an Isolated Worktree:
 Reviewers can test any open pull request without interrupting their current working branch:

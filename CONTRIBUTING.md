@@ -165,22 +165,20 @@ git -C .worktrees/my-feature push -u origin agent/my-feature
 
 ### Step 5: Open the Pull Request
 
-* **On Bitbucket**:
-  1. Open your repository in the browser: `https://bitbucket.org/jadm11/ai-automation-engineer-workstation/pull-requests/`
-  2. Click **Create pull request**.
-  3. Set **Source branch**: `feature/my-feature` (or `agent/my-feature`).
-  4. Set **Destination branch**: `main`.
-  5. Title your PR with your conventional commit summary.
-  6. Fill out the PR template with:
+* **On GitHub** (from the terminal):
+  ```bash
+  gh pr create --base main --title "feat: my new feature" --body "Detailed description of changes"
+  ```
+
+* **On GitHub** (in the browser):
+  1. Open `https://github.com/jacob-adm/ai-automation-engineer-workstation/compare`.
+  2. Set **base**: `main` and **compare**: `feature/my-feature` (or `agent/my-feature`).
+  3. Title your PR with your conventional commit summary.
+  4. Fill out the PR template with:
      - **Summary of changes**
      - **Motivation / Problem solved**
      - **Test receipts confirmation** (e.g., "Verified via `./tests/run_tests.sh`")
-  7. Click **Create pull request**.
-
-* **On GitHub (if mirrored / forked)**:
-  ```bash
-  gh pr create --title "feat: my new feature" --body "Detailed description of changes"
-  ```
+  5. Click **Create pull request**.
 
 ---
 
