@@ -29,7 +29,7 @@ Windows: If you don't have WSL, and you installed Git for Windows to clone the r
 
 ```bash
 # 1. Clone the repository
-git clone https://bitbucket.org/jadm11/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
+git clone https://github.com/jacob-adm/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
 cd ~/ai-automation-engineer-workstation
 
 # 2. Jump into the isolated sandbox
@@ -42,7 +42,7 @@ If you are on your actual workstation (an Ubuntu desktop/laptop, Windows WSL2, o
 
 ```bash
 # 1. Clone the repository
-git clone https://bitbucket.org/jadm11/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
+git clone https://github.com/jacob-adm/ai-automation-engineer-workstation.git ~/ai-automation-engineer-workstation
 cd ~/ai-automation-engineer-workstation
 
 # 2. Run the native installer
