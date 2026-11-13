@@ -156,16 +156,16 @@ $SUDO apt-get install -y \
 # Invariant: Pinned SHA256 checksums prevent supply-chain tampering.
 if ! command -v uv >/dev/null 2>&1; then
     log_info "Installing pinned uv release with SHA256 verification..."
-    UV_VER="0.6.5"
+    UV_VER="0.13.7"
     ARCH="$(uname -m)"
     case "$ARCH" in
         x86_64)
             UV_TARGET="x86_64-unknown-linux-gnu"
-            UV_SHA256="8fc9895719a1291ecd193cb86f9282ff3649cef797d29eacc74c4f573aab1e2f"
+            UV_SHA256="c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83"
             ;;
         aarch64|arm64)
             UV_TARGET="aarch64-unknown-linux-gnu"
-            UV_SHA256="ebf0707ab949b948ad14250ed93f968fec954e20d12ce6bc9fce74b0ce7e4900"
+            UV_SHA256="71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc"
             ;;
         *)
             UV_TARGET=""

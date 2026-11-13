@@ -70,7 +70,9 @@ if [ -n "$UV_QUARANTINE_DATE" ]; then
     export UV_EXCLUDE_NEWER="$UV_QUARANTINE_DATE"
 fi
 
-# Enable OSV vulnerability and malicious package database checks during resolution
+# uv >= 0.11.16 (preview): after each lockfile sync (uv add, uv sync, ...), ask OSV for
+# known-malware (MAL) advisories on the locked packages and stop the sync on a match.
+# Malware only, not CVEs (that is `uv audit`). Older uv ignores this variable.
 export UV_MALWARE_CHECK=1
 
 # ------------------------------------------------------------------------------

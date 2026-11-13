@@ -23,7 +23,7 @@ Read this first. It decides how much each box below protects you.
 | **Claude Code permission rules** (`config/claude/settings.json`, installed to `~/.claude/settings.json`) | Claude Code itself, on every call to its file tools | Reading secret files, `.env` files, `.worktrees/`, `.git/` and other denied paths; editing outside the allowed patterns | Shell commands the agent runs; other agents that don't read this file |
 | **Circuit breaker and rate limit** (`agent-guard-check`) | Nothing calls it automatically. `jagent` (`jrun agents`) calls it before queuing; agent loops must call it themselves | Stopping agent loops (`agent-stop`); at most 30 guarded runs per hour | Any command that doesn't go through the guard |
 | **`secret-run`, `agent-worktree`, `pueue` queues** | Used when you or the agent run them | Scoped secrets, branch isolation, concurrency limits | Work done without them |
-| **Host settings** (`.bashrc`, `.npmrc`) | Your shell and package managers | 7-day PyPI cut-off, npm install scripts off, RAM scratch on Linux | Packages installed outside `uv` / `npm` |
+| **Host settings** (`.bashrc`, `.npmrc`) | Your shell and package managers | 7-day PyPI cut-off, uv malware check on syncs, npm install scripts off, RAM scratch on Linux | Packages installed outside `uv` / `npm` |
 
 ---
 
@@ -49,7 +49,7 @@ flowchart TB
         MCP["5 · MCP servers<br/>filesystem · git · fetch"]:::optin
     end
 
-    HOST["Host · Ubuntu or macOS<br/>PyPI 7-day cut-off · npm scripts off · RAM TMPDIR on Linux · doctor · dotfiles-update"]
+    HOST["Host · Ubuntu or macOS<br/>PyPI 7-day cut-off · uv malware check · npm scripts off · RAM TMPDIR on Linux · doctor · dotfiles-update"]
 
     AGENT ==>|"every Read / Edit tool call"| RULES
     AGENT -.->|"may call"| TOOLS
@@ -166,6 +166,6 @@ sequenceDiagram
 | **Worktrees** | `bin/agent-worktree` → `workstation worktree`, `config/bash/aliases.d/ai.sh` (`aw`) | `.worktrees/<task>` on `agent/<task>`; merge removes the worktree and branch | Nothing prevents direct commits to `main` |
 | **Queues** | `config/pueue/pueue.yml`, `config/bash/aliases.d/ai.sh` | `agents` group 4 parallel (guarded); `experiments` 2 parallel (not guarded) | Only work submitted through `jrun` |
 | **MCP servers** | `config/mcp/mcp.json`, `bin/check-mcp-logs` | filesystem server on `~/Development`, plus git and fetch; log viewer | Server packages are fetched unpinned (`npx -y`, `uvx`) |
-| **Supply chain** | `config/bash/.bashrc`, `config/npm/.npmrc` | PyPI releases newer than 7 days are ignored (`UV_EXCLUDE_NEWER`); npm install scripts off, `audit` on, exact versions saved | No malware or OSV scan runs; npm has no age cut-off |
+| **Supply chain** | `config/bash/.bashrc`, `config/npm/.npmrc` | PyPI releases newer than 7 days are ignored (`UV_EXCLUDE_NEWER`); OSV malware check on uv syncs; npm install scripts off, `audit` on, exact versions saved | `UV_MALWARE_CHECK=1` makes uv (0.11.16+, pinned 0.13.7) check locked packages against OSV known-malware advisories on each sync; a uv preview feature, malware only, not CVEs. npm has no age cut-off |
 | **RAM scratch** | `config/bash/.bashrc` | `TMPDIR=/run/user/$UID` when that folder exists | Linux only |
 | **Health and updates** | `bin/doctor` (`doctor --fix`), `bin/dotfiles-update`, `update.sh` | Checks links, packages, Docker, git, guardrails and secrets; repairs links; pulls updates | — |
