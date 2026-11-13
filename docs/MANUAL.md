@@ -216,7 +216,7 @@ This workstation enforces a **Zero-Ambient Secret** policy:
 * Zero API keys in `~/.bashrc`.
 * Zero API keys in repository `.env` files.
 * All credentials live in a locked vault file: `~/.secrets/ai.env` (permissions `0600`, directory `0700`).
-* Commands that require credentials are run via [`bin/secret-run`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/bin/secret-run).
+* Commands that require credentials are run via [`bin/secret-run`](../bin/secret-run).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -304,13 +304,13 @@ Attackers monitor popular LLM hallucination patterns and publish malicious packa
 ```
 
 1. **7-Day Sliding Quarantine (`UV_EXCLUDE_NEWER`)**:  
-   In [`.bashrc`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/bash/.bashrc) and [`uv.toml`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/uv/uv.toml), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week. The vast majority of malicious packages on PyPI are caught and removed within 48 to 72 hours.
+   In [`.bashrc`](../config/bash/.bashrc) and [`uv.toml`](../config/uv/uv.toml), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week. The vast majority of malicious packages on PyPI are caught and removed within 48 to 72 hours.
 2. **Automated Malware Checking (`UV_MALWARE_CHECK=1`)**:  
    Every dependency resolution automatically cross-references the OSV (Open Source Vulnerabilities) database for known CVEs and malicious signatures.
 3. **npm Lifecycle Script Neutralization (`ignore-scripts=true`)**:  
-   In [`config/npm/.npmrc`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/npm/.npmrc), `ignore-scripts=true` prevents npm from running arbitrary `preinstall`, `install`, or `postinstall` bash scripts that infostealer worms use to steal browser cookies and SSH keys.
+   In [`config/npm/.npmrc`](../config/npm/.npmrc), `ignore-scripts=true` prevents npm from running arbitrary `preinstall`, `install`, or `postinstall` bash scripts that infostealer worms use to steal browser cookies and SSH keys.
 4. **Cryptographic Checksum Pinning & Zero `curl | sh`**:  
-   When bootstrapping binaries (`uv`, `pueue`), [`scripts/packages.sh`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/scripts/packages.sh) enforces official SHA256 cryptographic digests before binary placement into `/usr/local/bin`, completely eliminating unauthenticated remote shell execution pipelines.
+   When bootstrapping binaries (`uv`, `pueue`), [`scripts/packages.sh`](../scripts/packages.sh) enforces official SHA256 cryptographic digests before binary placement into `/usr/local/bin`, completely eliminating unauthenticated remote shell execution pipelines.
 
 ---
 
@@ -339,7 +339,7 @@ Workspace Root ────────┼─────────► Agent B
 #### The Solution: Isolated Git Worktrees
 A **Git Worktree** allows a single repository to have multiple working directories checked out to different branches simultaneously, sharing the exact same underlying `.git` object store.
 
-This workstation provides [`bin/agent-worktree`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/bin/agent-worktree) (aliased as `aw`):
+This workstation provides [`bin/agent-worktree`](../bin/agent-worktree) (aliased as `aw`):
 
 ```
 THE WORKTREE ISOLATION PATTERN:
@@ -371,7 +371,7 @@ aw-clean
 ```
 
 > [!NOTE]
-> All `.worktrees/` directories are automatically ignored in [`.gitignore_global`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/git/.gitignore_global) and explicitly excluded from agent context windows in [`settings.json`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/claude/settings.json), guaranteeing that agents never index each other's in-progress scratchpads.
+> All `.worktrees/` directories are automatically ignored in [`.gitignore_global`](../config/git/.gitignore_global) and explicitly excluded from agent context windows in [`settings.json`](../config/claude/settings.json), guaranteeing that agents never index each other's in-progress scratchpads.
 
 ---
 
@@ -386,7 +386,7 @@ When an agent encounters a broken API endpoint, a compiler error it doesn't unde
 Putting retry limits *inside* the model's prompt is an **in-band control**. If the model enters a hallucination state, it often ignores its prompt instructions.
 
 #### The Solution: Out-of-Band OS-Level Circuit Breakers
-The workstation implements an **out-of-band** control plane via [`config/ai_automation/ai_automation.sh`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/ai_automation/ai_automation.sh):
+The workstation implements an **out-of-band** control plane via [`config/ai_automation/ai_automation.sh`](../config/ai_automation/ai_automation.sh):
 
 ```
                      Agent Loop Pre-Flight Request
@@ -437,7 +437,7 @@ Running AI models and test harnesses locally is resource-intensive:
 #### The Solution: Background Queue Groups
 The workstation configures **`pueue`**, a lightweight UNIX process supervisor and task queue daemon.
 
-In [`config/pueue/pueue.yml`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/pueue/pueue.yml), the environment defines **strict concurrency groups**:
+In [`config/pueue/pueue.yml`](../config/pueue/pueue.yml), the environment defines **strict concurrency groups**:
 * **`default`**: 1 parallel task.
 * **`experiments`**: **Max 2 parallel tasks** (prevents GPU VRAM exhaustion during model training/evals).
 * **`agents`**: **Max 4 parallel tasks** (allows up to 4 concurrent coding agents without CPU lockup).
@@ -475,7 +475,7 @@ A software engineer or an autonomous agent accidentally modifies a symlink, unin
 The environment is designed on **The Spilled Coffee Principle**:
 > *If you spill coffee on your laptop, or an autonomous agent completely wrecks your configurations, you should be back to 100% operational readiness within 60 seconds with zero manual guesswork.*
 
-The workstation provides [`bin/doctor`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/bin/doctor):
+The workstation provides [`bin/doctor`](../bin/doctor):
 
 ```bash
 # 1. Run the comprehensive diagnostic check
@@ -507,13 +507,13 @@ LLM context windows are finite and costly. When an AI coding agent indexes a wor
 * Each turn costs 10x more and responds 5x slower.
 
 #### The Solution: Closed-Loop Context Injection & Strict Boundaries
-1. **Unified Instruction Grounding ([`config/agents/AGENTS.md`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/agents/AGENTS.md))**:  
+1. **Unified Instruction Grounding ([`config/agents/AGENTS.md`](../config/agents/AGENTS.md))**:  
    Symlinked directly to `~/.claude/CLAUDE.md` and referenced in `~/.config/opencode/opencode.json`. This teaches every agent that lands on your machine:
    * How to use `secret-run` instead of asking for keys.
    * How to use `agent-worktree` instead of editing root files.
    * How to queue background jobs with `pueue`.
    * What boundaries must never be crossed.
-2. **Strict Context Boundaries ([`config/claude/settings.json`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/claude/settings.json))**:
+2. **Strict Context Boundaries ([`config/claude/settings.json`](../config/claude/settings.json))**:
    ```json
    "permissions": {
      "deny": [
@@ -528,8 +528,8 @@ LLM context windows are finite and costly. When an AI coding agent indexes a wor
    }
    ```
    These rules cover Claude Code's file tools. They do not stop a shell command such as `cat .env`, so secret isolation still depends on `secret-run` keeping keys out of the environment.
-3. **Model Context Protocol Standards ([`config/mcp/mcp.json`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/config/mcp/mcp.json))**:  
-   Pre-configures vendor-neutral MCP servers (`filesystem`, `git`, `fetch`) and pairs them with [`bin/check-mcp-logs`](file:///Users/jacobadm/Development/ai-automation-engineer-workstation/bin/check-mcp-logs) (`mcplogs`) to inspect JSON-RPC communication errors across harnesses in real time.
+3. **Model Context Protocol Standards ([`config/mcp/mcp.json`](../config/mcp/mcp.json))**:  
+   Pre-configures vendor-neutral MCP servers (`filesystem`, `git`, `fetch`) and pairs them with [`bin/check-mcp-logs`](../bin/check-mcp-logs) (`mcplogs`) to inspect JSON-RPC communication errors across harnesses in real time.
 
 ---
 
