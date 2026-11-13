@@ -14,6 +14,21 @@ Powered by a high-performance, sub-millisecond Rust multi-call engine (`workstat
 
 ---
 
+## Where to Run It and What You Need
+
+You don't need a new computer. Pick one:
+
+| You want to | Run it on | Command | What changes on your machine |
+| :--- | :--- | :--- | :--- |
+| **Try it first** | Any Mac, Linux or Windows (WSL2) machine with Docker | `./tests/sandbox.sh` | Nothing. It opens a throwaway Ubuntu 24.04 container that is deleted when you exit. |
+| **Use it every day** | Ubuntu 22.04 or 24.04: a PC, a VM, Windows WSL2 or a cloud server | `./install.sh` | Installs packages with `apt` (needs `sudo`) and replaces your config files for bash, git, tmux and other tools. Existing files are backed up to `~/.dotfiles_backup/` first. |
+| **Use it on a cloud GPU box** | An Ubuntu pod (RunPod, Lambda Labs, Hetzner), including as `root` | `./install.sh --profile cloud` | Same as above, for a headless server. |
+| **Use it on a Mac** | macOS | `./install.sh --profile minimal` | Links the config files only. The package step uses `apt`, so it doesn't run on macOS. |
+
+- **Preview first:** `./install.sh --dry-run` shows what would be linked and backed up without changing anything.
+- **Keeping your current setup untouched:** use the Docker sandbox, a VM or a spare machine.
+- **Hardware:** no special hardware is needed. Coding agents like Claude Code and Aider with cloud models run on the provider's servers, so an ordinary laptop is enough. Running models locally (for example with Ollama) is the exception; that needs the memory or GPU the model calls for.
+
 ## Key Highlights for AI & Automation Engineers
 
 ### 1. Supply Chain Defense (PyPI & npm)
