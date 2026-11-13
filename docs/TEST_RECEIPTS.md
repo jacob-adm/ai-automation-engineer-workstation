@@ -124,7 +124,7 @@ Verified that all 26 configuration and CLI symlinks resolve directly to the sour
 
 ### Stage 5: AI Supply Chain Defense
 - `UV_EXCLUDE_NEWER` automatically enforces a **7-day sliding quarantine** on Python packages to shield agents from zero-day malicious releases.
-- `UV_MALWARE_CHECK=true` activates automated bytecode and known bad package signature scans.
+- `UV_MALWARE_CHECK=1` is set, which makes uv 0.11.16 or later check locked packages against OSV known-malware advisories on each sync. The test checks that the variable is set, not that a scan ran.
 - `~/.npmrc` sets `ignore-scripts=true` to block untrusted postinstall lifecycle script execution.
 
 ```text

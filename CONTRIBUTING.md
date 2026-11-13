@@ -13,7 +13,7 @@ Before contributing, keep these four core architectural rules in mind:
 1. **Zero Ambient Secrets**:  
    Never introduce configurations or scripts that inject plaintext credentials into ambient shell environments (`~/.bashrc`). Always use ephemeral scoping via `secret-run` or directory-scoped `.envrc` via `direnv`.
 2. **Supply Chain Defense First**:  
-   Respect the 7-day PyPI quarantine (`UV_EXCLUDE_NEWER`), signature scanning (`UV_MALWARE_CHECK`), and npm script isolation (`ignore-scripts=true`).
+   Respect the 7-day PyPI quarantine (`UV_EXCLUDE_NEWER`), the OSV malware-advisory check (`UV_MALWARE_CHECK`), and npm script isolation (`ignore-scripts=true`).
 3. **Idempotency & Non-Destructive Operations**:  
    Every script and installation routine must be strictly idempotent. Re-running `install.sh` or `update.sh` must perform zero redundant changes and never clobber existing user configurations without creating a timestamped backup in `~/.dotfiles_backup/`.
 4. **The Spilled Coffee Principle**:  

@@ -33,7 +33,7 @@ You don't need a new computer. Pick one:
 
 ### 1. Supply Chain Defense (PyPI & npm)
 - **7-Day Package Quarantine**: Automatically sets `UV_EXCLUDE_NEWER` to 7 days prior in interactive shells. Zero-day compromised PyPI packages are held back before your local harness or environment downloads them.
-- **Malware Checking**: `UV_MALWARE_CHECK=1` queries the OSV vulnerability database on every package addition.
+- **Malware Check**: `UV_MALWARE_CHECK=1` makes uv (0.11.16 or later; the installer pins 0.13.7) ask OSV for known-malware advisories on your locked packages after each sync (`uv add`, `uv sync`), and stop before installing a flagged one. It is a uv preview feature and covers malware, not CVEs.
 - **Script Execution Guard**: `.npmrc` sets `ignore-scripts=true` to block arbitrary postinstall script execution and token exfiltration.
 
 ### 2. Credential Isolation (Zero Ambient API Keys)

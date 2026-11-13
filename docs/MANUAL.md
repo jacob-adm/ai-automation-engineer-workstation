@@ -288,8 +288,8 @@ Attackers monitor popular LLM hallucination patterns and publish malicious packa
                                   │ NO
                                   ▼
       ┌───────────────────────────────────────────────────────┐
-      │  Tier 2: Signature & Malware Check (UV_MALWARE_CHECK) │
-      │  Query OSV open-source vulnerability database         │
+      │  Tier 2: Malware Check (UV_MALWARE_CHECK, uv preview) │
+      │  Ask OSV for known-malware advisories on each sync    │
       └───────────────────────────┬───────────────────────────┘
                     MALICIOUS ──► REJECT & ALERT
                                   │ CLEAN
@@ -304,9 +304,9 @@ Attackers monitor popular LLM hallucination patterns and publish malicious packa
 ```
 
 1. **7-Day Sliding Quarantine (`UV_EXCLUDE_NEWER`)**:  
-   In [`.bashrc`](../config/bash/.bashrc) and [`uv.toml`](../config/uv/uv.toml), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week. The vast majority of malicious packages on PyPI are caught and removed within 48 to 72 hours.
+   In [`.bashrc`](../config/bash/.bashrc), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week. The vast majority of malicious packages on PyPI are caught and removed within 48 to 72 hours.
 2. **Automated Malware Checking (`UV_MALWARE_CHECK=1`)**:  
-   Every dependency resolution automatically cross-references the OSV (Open Source Vulnerabilities) database for known CVEs and malicious signatures.
+   With uv 0.11.16 or later (the installer pins 0.13.7), every lockfile sync (`uv add`, `uv sync`) asks the OSV database for known-malware (MAL) advisories on the locked packages and stops before a flagged package is installed. It is a uv preview feature. It does not check CVEs; `uv audit` does that.
 3. **npm Lifecycle Script Neutralization (`ignore-scripts=true`)**:  
    In [`config/npm/.npmrc`](../config/npm/.npmrc), `ignore-scripts=true` prevents npm from running arbitrary `preinstall`, `install`, or `postinstall` bash scripts that infostealer worms use to steal browser cookies and SSH keys.
 4. **Cryptographic Checksum Pinning & Zero `curl | sh`**:  
