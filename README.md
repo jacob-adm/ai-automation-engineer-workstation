@@ -4,7 +4,7 @@
 
 A modular, robust, and security-hardened workstation repository designed for **AI Automation Engineers** and **AI Engineers** (developers running autonomous agents, local test harnesses, and model evals) on Ubuntu and macOS.
 
-Powered by a high-performance, sub-millisecond Rust multi-call engine (`workstation`) with transparent POSIX Bash fallback shims, automated package bootstrapping, supply chain quarantine, credential isolation, git worktree isolation for concurrent agents, task queue supervision, and zero-mock empirical testing suites.
+Powered by a Rust multi-call engine (`workstation`) with transparent POSIX Bash fallback shims, automated package bootstrapping, supply chain quarantine, credential isolation, git worktree isolation for concurrent agents, task queue supervision, and zero-mock empirical testing suites.
 
 > 📚 **Complete Documentation Suite:**
 > - 📖 **[The AI Automation Engineer's Field Manual](docs/MANUAL.md)**: Deep architectural guide explaining agent runtime layers, threat models, supply chain defense, and systems engineering for autonomous agents.
@@ -32,7 +32,7 @@ You don't need a new computer. Pick one:
 ## Key Highlights for AI & Automation Engineers
 
 ### 1. Supply Chain Defense (PyPI & npm)
-- **7-Day Package Quarantine**: Automatically sets `UV_EXCLUDE_NEWER` to 7 days prior in interactive shells. Zero-day compromised PyPI packages are held back before your local harness or environment downloads them.
+- **7-Day Package Quarantine**: Automatically sets `UV_EXCLUDE_NEWER` to 7 days prior in interactive shells. PyPI releases published in the last 7 days are ignored, so a newly published malicious version is not installed before it can be reported.
 - **Malware Check**: `UV_MALWARE_CHECK=1` makes uv (0.11.16 or later; the installer pins 0.13.7) ask OSV for known-malware advisories on your locked packages after each sync (`uv add`, `uv sync`), and stop before installing a flagged one. It is a uv preview feature and covers malware, not CVEs.
 - **Script Execution Guard**: `.npmrc` sets `ignore-scripts=true` to block arbitrary postinstall script execution and token exfiltration.
 
@@ -88,7 +88,7 @@ Run model evals, batch inferences, and agent test suites in the background with 
 
 ### 6. Self-Healing Environment Diagnostic (`doctor`)
 Built on "The Spilled Coffee Principle"—if a laptop is destroyed or an environment drifts, you should be back to 100% operational state instantly with zero manual guesswork:
-- **`doctor`**: Diagnostic suite verifying 48 system health checks across 31 symlinks, core and AI packages, Docker daemon status, git identity, agent circuit breaker state, MCP boundaries, secret permissions, and binary checksum tooling.
+- **`doctor`**: Runs 53 health checks: 31 config symlinks, 13 core and AI tools, Docker, git identity, the agent circuit breaker, shell aliases, agent configs (2) and security and supply-chain settings (3).
 - **`doctor --fix`**: Automatically repairs broken symlinks, launches self-healing sub-routines, and restores configuration integrity.
 
 ### 7. Model Context Protocol (MCP) Diagnostics & Configs
@@ -144,7 +144,7 @@ Executes:
 1. `git pull --rebase` to fetch upstream updates.
 2. `./scripts/links.sh` to refresh all symlinks.
 3. `uv self update` to keep Python tooling current.
-4. `doctor --fix` to verify all 48 checks and heal any broken configurations automatically.
+4. `doctor --fix` to re-create missing or broken symlinks and run all 53 checks again.
 
 ### 12. ML, GPU & Python Ergonomics
 - **`activate_venv`**: Auto-detects and activates `.venv` in the current working directory or git repo root.
@@ -310,7 +310,7 @@ cd ~/ai-automation-engineer-workstation
 
 This repository follows a **Trunk-Based Development** model enhanced with **Git Worktrees** for non-blocking agent concurrency:
 
-* **`main`**: Protected, deployable, 100% verified trunk.
+* **`main`**: The trunk. Changes land through pull requests that pass CI.
 * **`feature/<name>`**: Human-engineered features and enhancements.
 * **`agent/<task-name>`**: Autonomous agent workflows created via `agent-worktree new <task-name>`.
 * **`fix/<name>`**: Bug repairs and security patches.
@@ -360,7 +360,7 @@ The automated test verifies:
 8. **Circuit Breakers & Telemetry**: `agent-stop`, `agent-resume`, `agent-guard-check`, hourly limits, and mode `0600` log telemetry.
 9. **Task Queue Supervision**: `pueue` daemon autostart, runtime state queues (`experiments`, `agents`), and concurrency capping.
 10. **Modular Shell Aliases**: `~/.bash_aliases.d/` across ai, containers, git, nav, and sys domains.
-11. **Self-Healing Diagnostic Medic**: `doctor` 48-point verification, drift detection, and `doctor --fix` automatic restoration.
+11. **Self-Healing Diagnostic Medic**: `doctor` runs 53 checks; `doctor --fix` re-creates broken symlinks.
 12. **Model Context Protocol (MCP)**: `mcp.json` JSON schema compliance, bounded filesystem access, and `check-mcp-logs`.
 13. **Developer CLI Utilities**: `sysinfo`, `pr-checkout` with isolated worktree support, `ensure-docker` daemon healing, and `gha-failed-logs`.
 14. **AI Coding Agent Configurations**: `CLAUDE.md`, `settings.json`, `opencode.json` schema validation, and sensitive `permissions.deny` boundaries.
@@ -378,8 +378,8 @@ With **`v1.0.0`** established as the hardened, deterministically tested workstat
   - Cryptographic binary pinning (`uv`, `pueue`) & 7-day PyPI supply chain quarantine.
   - Fail-closed secret isolation (`secret-run`) with strict AST parsing and `--strict` ambient `.env` suppression.
   - Local git worktrees (`agent-worktree`) for non-blocking agent concurrency.
-  - File-based circuit breakers (`agent-stop`) and 48-check self-healing diagnostic suite (`doctor`).
-  - 17-stage containerized test suite with 100% empirical verification receipts.
+  - File-based circuit breakers (`agent-stop`) and a 53-check diagnostic suite (`doctor`).
+  - 17-stage containerized test suite that prints a pass/fail receipt for each check.
 
 * **`v1.1.0` — Enterprise Secret Backends**:
   - Native integration of enterprise cloud secret managers (1Password CLI, AWS Secrets Manager, GCP Secret Manager, HashiCorp Vault) directly into `secret-run`.

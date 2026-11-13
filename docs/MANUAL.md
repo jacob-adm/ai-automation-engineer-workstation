@@ -169,9 +169,9 @@ To maintain rigorous security engineering, it is critical to state clearly what 
 
 | Dimension | What This Workstation Guarantees | Operational Non-Goal (Out of Scope) |
 | :--- | :--- | :--- |
-| **Target User & Persona** | Hardened, zero-ambient-secret execution substrate for an **individual AI automation engineer** on their workstation or dedicated cloud dev pod. | Multi-tenant shared OS environment hosting adversarial, untrusted third-party users side-by-side. |
-| **Credential Safety** | Secrets exist strictly in temporary child process subshells (`secret-run`). Ambient shell profiles (`~/.bashrc`) and LLM context tools are shielded from plaintext tokens. | Kernel-level memory zeroing against physical hardware attackers with root debugger access to the host machine. |
-| **Agent Circuit Breakers** | Cooperative supervisor guardrails (`agent-guard-check`, `agent-stop`) that immediately halt task queues (`jagent`) and loop scripts to prevent runaway API spend and token exhaustion. | Hypervisor-level unbypassable sandbox or kernel seccomp jail against arbitrary native compiled binaries executing outside the shell harness. |
+| **Target User & Persona** | A hardened setup that keeps API keys out of the shell environment, for an **individual AI automation engineer** on their workstation or dedicated cloud dev pod. | Multi-tenant shared OS environment hosting adversarial, untrusted third-party users side-by-side. |
+| **Credential Safety** | Secrets reach only the command `secret-run` starts (it `exec`s the command with them in its environment). They are kept out of `~/.bashrc`, and Claude Code's permission rules block its file tools from reading secret and `.env` files. Shell commands an agent runs are not covered by those rules. | Kernel-level memory zeroing against physical hardware attackers with root debugger access to the host machine. |
+| **Agent Circuit Breakers** | Cooperative guardrails: after `agent-stop`, `jagent` refuses to queue new agent tasks and any loop that calls `agent-guard-check` stops; the guard also caps guarded runs at 30 per hour. Tasks already running are not killed, and work that never calls the guard is not affected. | Hypervisor-level unbypassable sandbox or kernel seccomp jail against arbitrary native compiled binaries executing outside the shell harness. |
 | **Supply Chain Defense** | Pinned releases with SHA256 cryptographic verification for bootstrapped binaries (`uv`, `pueue`), zero unverified `curl \| sh`, 7-day PyPI quarantine, and npm script execution disabled. | Air-gapped offline package mirror or custom internal artifact repository. |
 | **MCP Scope Boundary** | Model Context Protocol filesystem scope is bounded to `~/Development`, isolating private dotfiles (`~/.ssh`, `~/.aws`, `~/.gnupg`) from agent tools. | Restricting the engineer from editing their own repositories in `~/Development`. |
 | **Test Image (`tests/Dockerfile`)** | Ephemeral, automated testing and local developer exploration sandbox (`sandbox.sh`) simulating standard Ubuntu workstation permissions with sudo. | Hardened multi-tenant production container runtime or Kubernetes pod security standard. |
@@ -214,7 +214,7 @@ Those keys are ingested directly into the agent's context window. From there:
 #### The Solution: Ephemeral Secret Brokering
 This workstation enforces a **Zero-Ambient Secret** policy:
 * Zero API keys in `~/.bashrc`.
-* Zero API keys in repository `.env` files.
+* Keep API keys out of repository `.env` files. `secret-run` reads `.env.local` or `.env` in the current folder if one exists, so use `secret-run --strict` in repositories you don't trust.
 * All credentials live in a locked vault file: `~/.secrets/ai.env` (permissions `0600`, directory `0700`).
 * Commands that require credentials are run via [`bin/secret-run`](../bin/secret-run).
 
@@ -304,7 +304,7 @@ Attackers monitor popular LLM hallucination patterns and publish malicious packa
 ```
 
 1. **7-Day Sliding Quarantine (`UV_EXCLUDE_NEWER`)**:  
-   In [`.bashrc`](../config/bash/.bashrc), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week. The vast majority of malicious packages on PyPI are caught and removed within 48 to 72 hours.
+   In [`.bashrc`](../config/bash/.bashrc), the workstation dynamically calculates a timestamp exactly 7 days prior. When `uv` installs packages, it ignores any version or dependency released within the last week, which gives the community time to report and remove a malicious release before it reaches you.
 2. **Automated Malware Checking (`UV_MALWARE_CHECK=1`)**:  
    With uv 0.11.16 or later (the installer pins 0.13.7), every lockfile sync (`uv add`, `uv sync`) asks the OSV database for known-malware (MAL) advisories on the locked packages and stops before a flagged package is installed. It is a uv preview feature. It does not check CVEs; `uv audit` does that.
 3. **npm Lifecycle Script Neutralization (`ignore-scripts=true`)**:  
@@ -473,7 +473,7 @@ A software engineer or an autonomous agent accidentally modifies a symlink, unin
 
 #### The Solution: The Spilled Coffee Principle
 The environment is designed on **The Spilled Coffee Principle**:
-> *If you spill coffee on your laptop, or an autonomous agent completely wrecks your configurations, you should be back to 100% operational readiness within 60 seconds with zero manual guesswork.*
+> *If you spill coffee on your laptop, or an autonomous agent completely wrecks your configurations, you should be able to get back to a working setup by re-running the installer and `doctor --fix`, without manual guesswork.*
 
 The workstation provides [`bin/doctor`](../bin/doctor):
 
@@ -481,9 +481,9 @@ The workstation provides [`bin/doctor`](../bin/doctor):
 # 1. Run the comprehensive diagnostic check
 doctor
 ```
-`doctor` validates **45 discrete system assertions**:
-1. All 26 dotfile symlinks resolve to valid targets.
-2. All 16 AI and developer binaries exist and execute properly.
+`doctor` runs **53 checks**:
+1. All 31 config symlinks resolve to valid targets.
+2. 13 core and AI tools are installed.
 3. Docker daemon is responsive.
 4. Git identity is configured.
 5. Circuit breaker status is clean.
@@ -494,7 +494,7 @@ doctor
 # 2. Heal the system automatically
 doctor --fix
 ```
-If any symlinks are missing or broken, `doctor --fix` automatically restores them, clears invalid locks, repairs permissions, and validates that the system converges back to 100% health in **under 200 milliseconds**.
+If any symlinks are missing or broken, `doctor --fix` re-creates them (backing up anything in the way), tightens the secret file's permissions, and runs all checks again.
 
 ---
 
