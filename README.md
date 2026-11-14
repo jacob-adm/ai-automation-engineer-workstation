@@ -405,6 +405,12 @@ This repository draws inspiration from the following open-source dotfiles and AI
 
 ---
 
+## Licence
+
+Apache-2.0; see [LICENSE](LICENSE). Releases up to and including v1.0.3 were published under the MIT licence and remain available under it.
+
+---
+
 ## Author & Contact
 
 Jacob Adm is an AI Automation Engineer currently focusing on enterprise autonomous agent orchestration, deterministic runtime architectures, and high-assurance multi-agent systems. Follow for more deep dives on systems engineering with autonomous AI: [linkedin.com/in/jacobadm](http://linkedin.com/in/jacobadm)
