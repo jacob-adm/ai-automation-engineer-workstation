@@ -9,7 +9,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 authors = ["AI Automation Workstation Contributors"]
-license = "MIT"
+license = "Apache-2.0"
 repository = "https://github.com/ai-automation-engineer-workstation"
 
 [workspace.dependencies]
