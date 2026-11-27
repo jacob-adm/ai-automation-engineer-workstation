@@ -37,7 +37,7 @@ flowchart TB
     classDef optin stroke-dasharray:5 4
 
     AGENT["Coding agent (Claude Code)<br/>instructions: ~/.claude/CLAUDE.md ← config/agents/AGENTS.md"]
-    HUMAN["Human SysOp"]
+    HUMAN["Human operator"]
 
     RULES["Claude Code permission rules · ~/.claude/settings.json<br/>Read denied: secret files, .env files, .worktrees, .git and 6 more paths<br/>Edit allowed without asking: Markdown, text and test files"]:::enforced
 
